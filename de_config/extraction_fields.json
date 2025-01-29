@@ -1,0 +1,20 @@
+[
+    {
+        "field_name": "Title",
+        "description": "The main title of the document",
+        "probable_pages": [1],
+        "type": "key_value"
+    },
+    {
+        "field_name": "Table of Contents",
+        "description": "List of chapters or sections",
+        "probable_pages": [2, 3],
+        "type": "layout"
+    },
+    {
+        "field_name": "Summary",
+        "description": "A brief summary of the document",
+        "probable_pages": [],
+        "type": "bullet_points"
+    }
+]

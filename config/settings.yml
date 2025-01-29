@@ -1,0 +1,4 @@
+model_loading: "api"  # Options: "local" or "api"
+huggingface_api_token: "your_huggingface_api_token"
+model_name_or_url: "Qwen/Qwen2.5-VL-7B-Instruct"  # For local loading
+api_endpoint: "https://api-inference.huggingface.co/models/your_model_name"  # For API loading

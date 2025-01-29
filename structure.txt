@@ -1,0 +1,22 @@
+project_root/
+├── config/
+│   └── settings.yml
+├── de_config/
+│   └── extraction_fields.json
+├── models/
+│   ├── __init__.py
+│   ├── model_manager.py
+│   └── inference.py
+├── vector_and_retrieve/
+│   ├── __init__.py
+│   └── colpali_integration.py
+├── src/
+│   ├── __init__.py
+│   └── parser.py
+├── tests/
+│   ├── __init__.py
+│   └── test_parser.py
+├── data/
+│   └── sample_document.pdf
+├── main.py
+└── requirements.txt
