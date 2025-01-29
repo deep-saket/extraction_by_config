@@ -1,11 +1,10 @@
 import yaml
-import torch
-from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+from models.qwen_v25_infer import QwenV25Infer
+from models.colpali_infer import ColPaliInfer
 
 class ModelManager:
-    qwen_model = None
-    qwen_processor = None
-    colpali_model = None
+    qwen_infer = None
+    colpali_infer = None
     config = None
 
     @classmethod
@@ -14,24 +13,23 @@ class ModelManager:
             cls.config = yaml.safe_load(file)
 
     @classmethod
-    def load_models(cls):
+    def initialize_models(cls):
         if cls.config is None:
             raise ValueError("Configuration not loaded. Call load_config first.")
 
-        if cls.config['model_loading'] == 'local':
-            if cls.qwen_model is None or cls.qwen_processor is None:
-                cls.qwen_model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-                    cls.config['model_name_or_url'], torch_dtype="auto", device_map="auto"
-                )
-                cls.qwen_processor = AutoProcessor.from_pretrained(cls.config['model_name_or_url'])
-        elif cls.config['model_loading'] == 'api':
-            if cls.qwen_processor is None:
-                cls.qwen_processor = AutoProcessor.from_pretrained(cls.config['model_name_or_url'])
+        # Initialize QwenV25Infer
+        model_loading = cls.config.get('model_loading', 'local')
+        if model_loading == 'local':
+            qwen_model_name_or_url = cls.config.get('qwen_model_name_or_url')
+            qwen_infer = QwenV25Infer(model_name_or_url=qwen_model_name_or_url)
+        elif model_loading == 'api':
+            api_endpoint = cls.config.get('api_endpoint')
+            api_token = cls.config.get('huggingface_api_token')
+            qwen_infer = QwenV25Infer(api_endpoint=api_endpoint, api_token=api_token)
         else:
             raise ValueError("Invalid model_loading option in config.")
+        cls.qwen_infer = qwen_infer
 
-        # ColPali model loading logic should be added here
-        # if cls.colpali_model is None:
-        #     cls.colpali_model = ColPali()
-
-        return cls.qwen_model, cls.qwen_processor, cls.colpali_model
+        # Initialize ColPaliInfer
+        colpali_model_name_or_url = cls.config.get('colpali_model_name_or_url')
+        cls.colpali_infer = ColPaliInfer(model_name_or_url=colpali_model_name_or_url)

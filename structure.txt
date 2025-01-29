@@ -6,17 +6,13 @@ project_root/
 ├── models/
 │   ├── __init__.py
 │   ├── model_manager.py
-│   └── inference.py
+│   ├── qwen_v25_infer.py
+│   └── colpali_infer.py
 ├── vector_and_retrieve/
 │   ├── __init__.py
-│   └── colpali_integration.py
+│   └── pdf_processor.py
 ├── src/
 │   ├── __init__.py
 │   └── parser.py
-├── tests/
-│   ├── __init__.py
-│   └── test_parser.py
-├── data/
-│   └── sample_document.pdf
-├── main.py
+├── local_test.py
 └── requirements.txt
