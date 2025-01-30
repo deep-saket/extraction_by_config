@@ -3,7 +3,7 @@ from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from PIL import Image
 from io import BytesIO
 import requests
-import base64
+from huggingface_hub import InferenceClient
 
 class QwenV25Infer:
     def __init__(self, model=None, processor=None, api_endpoint=None, api_token=None):
@@ -11,9 +11,13 @@ class QwenV25Infer:
         self.processor = processor
         self.api_endpoint = api_endpoint
         self.api_token = api_token
+        self.client = None
+
+        if self.api_endpoint and self.api_token:
+            self.client = InferenceClient(model=api_endpoint, token=api_token)
 
     def infer(self, image_data, prompt):
-        if self.api_endpoint and self.api_token:
+        if self.client:
             return self._infer_via_api(image_data, prompt)
         elif self.model and self.processor:
             return self._infer_locally(image_data, prompt)
@@ -29,11 +33,9 @@ class QwenV25Infer:
         return generated_text
 
     def _infer_via_api(self, image_data, prompt):
-        headers = {"Authorization": f"Bearer {self.api_token}"}
-        image_base64 = base64.b64encode(image_data).decode("utf-8")
-        payload = {"inputs": {"image": image_base64, "text": prompt}}
-        response = requests.post(self.api_endpoint, headers=headers, json=payload)
-        if response.status_code == 200:
-            return response.json()
+        image = Image.open(BytesIO(image_data)).convert("RGB")
+        response = self.client.text_to_image(prompt, image=image)
+        if response:
+            return response
         else:
-            return {"error": f"API request failed with status code {response.status_code}"}
+            return {"error": "API request failed."}
