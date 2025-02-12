@@ -1,6 +1,6 @@
 import yaml
 from models.QwenV25Infer import QwenV25Infer
-from models.ColpaliInfer import ColPaliInfer
+from models.ColPaliInfer import ColPaliInfer
 
 class ModelManager:
     qwen_infer = None

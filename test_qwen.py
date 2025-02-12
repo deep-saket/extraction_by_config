@@ -1,50 +1,47 @@
 import torch
-from transformers import ColPaliForRetrieval, ColPaliProcessor
+from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
+from PIL import Image
+from io import BytesIO
+import requests
 
-class ColPaliInfer:
-    def __init__(self, model_name_or_url):
-        """
-        Initializes the ColPaliInfer class by loading the model and processor.
-        
-        Args:
-            model_name_or_url (str): The name or URL of the pretrained ColPali model.
-        """
-        # Load the ColPali model and processor
-        self.model = ColPaliForRetrieval.from_pretrained(
-            model_name_or_url,
-            torch_dtype=torch.bfloat16,
-            device_map="auto"
-        ).eval()
-        self.processor = ColPaliProcessor.from_pretrained(model_name_or_url)
+# Import the QwenV25Infer class (ensure it's in the same directory or properly imported)
+from models.QwenV25Infer import QwenV25Infer
 
-    def get_image_embedding(self, image):
-        """
-        Generates an embedding for the given image.
-        
-        Args:
-            image (PIL.Image.Image): The input image.
-        
-        Returns:
-            torch.Tensor: The image embedding.
-        """
-        # Process the image and get embeddings
-        inputs = self.processor(images=image, return_tensors="pt").to(self.model.device)
-        with torch.no_grad():
-            embedding = self.model(**inputs).embeddings
-        return embedding
+def load_image_from_path(image_path):
+    """Load image data from a local file path."""
+    with open(image_path, 'rb') as f:
+        return f.read()
 
-    def get_text_embedding(self, text):
-        """
-        Generates an embedding for the given text query.
-        
-        Args:
-            text (str): The input text query.
-        
-        Returns:
-            torch.Tensor: The text embedding.
-        """
-        # Process the text and get embeddings
-        inputs = self.processor(text=text, return_tensors="pt").to(self.model.device)
-        with torch.no_grad():
-            embedding = self.model(**inputs).embeddings
-        return embedding
+def load_image_from_url(image_url):
+    """Load image data from a URL."""
+    response = requests.get(image_url)
+    response.raise_for_status()
+    return response.content
+
+def main():
+    # Configuration
+    use_api = False  # Set to True to use API inference
+    image_path = '/home/saket/Documents/photo.png'  # Path to your local image file
+    prompt = "Describe the image."
+
+    if use_api:
+        # API inference configuration
+        api_endpoint = 'https://your-endpoint-url'  # Replace with your endpoint URL
+        api_token = 'your-huggingface-api-token'  # Replace with your Hugging Face API token
+        inferer = QwenV25Infer(api_endpoint=api_endpoint, api_token=api_token)
+    else:
+        # Local inference configuration
+        model_name = 'Qwen/Qwen2.5-VL-3B-Instruct'  # Replace with your model name
+        inferer = QwenV25Infer(model_name=model_name, device='cpu')
+
+    # Load image data
+    with open(image_path, 'rb') as f:
+        image_data = f.read()
+
+    # Perform inference
+    result = inferer.infer(image_data, prompt)
+    print("Inference Result:", result)
+
+
+if __name__ == "__main__":
+    main()
