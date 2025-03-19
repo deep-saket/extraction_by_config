@@ -7,7 +7,7 @@ def main():
     pdf_processor = PDFProcessor()
 
     # Provide the path to your PDF file
-    pdf_path = "/home/saket/Documents/2028048054.Owner_Policy.1054423.pdf"
+    pdf_path = "/home/saket/Documents/203.pdf"
 
     # Convert PDF pages to images
     print("Converting PDF to images...")
