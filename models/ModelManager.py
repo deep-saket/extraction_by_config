@@ -1,4 +1,5 @@
 import yaml
+import torch
 from models.QwenV25Infer import QwenV25Infer
 from models.ColPaliInfer import ColPaliInfer
 
@@ -13,7 +14,7 @@ class ModelManager:
             cls.config = yaml.safe_load(file)
 
     @classmethod
-    def initialize_models(cls):
+    def initialize_models(cls, device=torch.device('mps')):
         if cls.config is None:
             raise ValueError("Configuration not loaded. Call load_config first.")
 
@@ -21,7 +22,7 @@ class ModelManager:
         model_loading = cls.config.get('model_loading', 'local')
         if model_loading == 'local':
             qwen_model_name_or_url = cls.config.get('qwen_model_name_or_url')
-            qwen_infer = QwenV25Infer(model_name_or_url=qwen_model_name_or_url)
+            qwen_infer = QwenV25Infer(model_name=qwen_model_name_or_url, device=device)
         elif model_loading == 'api':
             api_endpoint = cls.config.get('api_endpoint')
             api_token = cls.config.get('huggingface_api_token')
@@ -32,4 +33,4 @@ class ModelManager:
 
         # Initialize ColPaliInfer
         colpali_model_name_or_url = cls.config.get('colpali_model_name_or_url')
-        cls.colpali_infer = ColPaliInfer(model_name_or_url=colpali_model_name_or_url)
+        cls.colpali_infer = ColPaliInfer(model_name_or_url=colpali_model_name_or_url, device=device)

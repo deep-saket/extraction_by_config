@@ -1,6 +1,6 @@
 import json
-from models.model_manager import ModelManager
-from vector_and_retrieve.pdf_processor import PDFProcessor
+from models import ModelManager
+from vector_retrieve import PDFProcessor
 
 class Parser:
     def __init__(self, extraction_config):

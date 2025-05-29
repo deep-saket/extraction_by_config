@@ -1,7 +1,7 @@
 import yaml
 import json
-from models.model_manager import ModelManager
-from src.parser import Parser
+from models import ModelManager
+from src import Parser
 
 class LocalTest:
     def __init__(self, config_path):

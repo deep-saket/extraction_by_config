@@ -109,3 +109,6 @@ pdf_images/
 # OS-specific files
 .DS_Store
 Thumbs.db
+
+dataset
+output
