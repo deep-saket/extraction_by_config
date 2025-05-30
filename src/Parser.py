@@ -7,7 +7,7 @@ import torch
 
 
 class Parser:
-    def __init__(self, extraction_config, config_path="config/settings.yml", device=torch.device('cpu')):
+    def __init__(self, extraction_config, config_path="config/settings.yml", device=torch.device('mps')):
         # Initialize shared models
         ModelManager.load_config(config_path)
         ModelManager.initialize_models(device)

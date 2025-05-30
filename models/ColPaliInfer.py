@@ -12,7 +12,7 @@ class ColPaliInfer:
     offers methods to generate embeddings for both images and text queries.
     It also provides a method to retrieve the top-k candidates given a pre-computed query embedding.
     """
-    def __init__(self, model_name="vidore/colqwen2-v0.1", device=None):
+    def __init__(self, model_name="vidore/colqwen2-v0.1", device=None, torch_dtype=torch.bfloat16, device_map="auto"):
         """
         Initializes the ColPaliInfer class.
 
@@ -21,31 +21,20 @@ class ColPaliInfer:
             device (str or torch.device, optional): The device to run inference on 
                 (e.g., "cuda" or "cpu"). If not specified, it defaults to "cuda" if available.
         """
-        # Determine device: use provided device or auto-detect CUDA availability.
-        self.device = device if device is not None else ("cuda" if torch.cuda.is_available() else "cpu")
-        
+        ## override device to cpu for colpali
+        device = "cpu" if not device else device
+        self.device = device
+
         # Save the model name.
         self.model_name = model_name
         
         # Load the ColPali model with the specified torch dtype.
-        if device is not None and (isinstance(device, str) and 'cuda' in device):
-            self.model = ColQwen2.from_pretrained(
-                model_name,
-                torch_dtype=torch.bfloat16,
-                device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.
-            ).eval()
-            self.model.to(self.device)  # Ensure model is on the correct device.
-        elif device is not None and (isinstance(device, str) and 'cpu' not in device): ## for mps
-            self.model = ColQwen2.from_pretrained(
-                model_name,
-                device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.
-            ).eval()
-            self.model.to(self.device)  # Ensure model is on the correct device.
-        else:
-            self.model = ColQwen2.from_pretrained(
-                model_name,
-                torch_dtype=torch.bfloat16,
-            ).eval()
+        self.model = ColQwen2.from_pretrained(
+            model_name,
+            torch_dtype=torch_dtype,
+            device_map=device_map  # Adjusts automatically; you can specify explicitly if needed.
+        ).eval()
+        self.model.to(self.device)  # Ensure model is on the correct device.
         
         # Load the corresponding processor.
         self.processor = ColQwen2Processor.from_pretrained(model_name)
