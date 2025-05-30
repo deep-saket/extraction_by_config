@@ -42,9 +42,11 @@ class QwenV25Infer:
         if self.api_endpoint and self.api_token:
             self.client = InferenceClient(model=api_endpoint, token=api_token)
         elif model_name:
+            print(f"Loading {model_name} model...")
             self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
-                model_name, torch_dtype=torch.float16, device_map="auto"
+                model_name #, torch_dtype=torch.float16, device_map="auto"
             ).to(self.device)
+            print(f"Model loaded!")
             self.processor = AutoProcessor.from_pretrained(model_name)
         else:
             raise ValueError("Either API details or a model name must be provided for inference.")
@@ -81,7 +83,10 @@ class QwenV25Infer:
         Returns:
             str: The generated text from the model.
         """
-        image = Image.open(BytesIO(image_data)).convert("RGB")
+        if isinstance(image_data, bytes):
+            image = Image.open(BytesIO(image_data)).convert("RGB")
+        else:
+            image = Image.open(image_data).convert("RGB")
         messages = [
             {
                 "role": "user",

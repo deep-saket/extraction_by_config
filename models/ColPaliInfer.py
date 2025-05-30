@@ -28,10 +28,16 @@ class ColPaliInfer:
         self.model_name = model_name
         
         # Load the ColPali model with the specified torch dtype.
-        if device is not None and 'cuda' in device:
+        if device is not None and (isinstance(device, str) and 'cuda' in device):
             self.model = ColQwen2.from_pretrained(
                 model_name,
                 torch_dtype=torch.bfloat16,
+                device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.
+            ).eval()
+            self.model.to(self.device)  # Ensure model is on the correct device.
+        elif device is not None and (isinstance(device, str) and 'cpu' not in device):
+            self.model = ColQwen2.from_pretrained(
+                model_name,
                 device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.
             ).eval()
             self.model.to(self.device)  # Ensure model is on the correct device.

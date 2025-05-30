@@ -33,4 +33,4 @@ class ModelManager:
 
         # Initialize ColPaliInfer
         colpali_model_name_or_url = cls.config.get('colpali_model_name_or_url')
-        cls.colpali_infer = ColPaliInfer(model_name_or_url=colpali_model_name_or_url, device=device)
+        cls.colpali_infer = ColPaliInfer(model_name=colpali_model_name_or_url, device=device)

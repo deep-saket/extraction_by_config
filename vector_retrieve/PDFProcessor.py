@@ -92,6 +92,7 @@ class PDFProcessor:
         
         # Stack all page embeddings to form a tensor of shape (num_pages, embed_dim)
         page_embeddings = torch.stack([emb for _, emb in embeddings], dim=0).to(self.colpali_infer.model.device)
+        page_embeddings = page_embeddings.squeeze(1)
 
         # Compute similarity scores using the processor's score_multi_vector method.
         # Expected shape for a single query: (1, num_pages)
