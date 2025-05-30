@@ -85,8 +85,13 @@ class QwenV25Infer:
         """
         if isinstance(image_data, bytes):
             image = Image.open(BytesIO(image_data)).convert("RGB")
-        else:
+        elif isinstance(image_data, Image.Image):
+            image = image_data
+        elif isinstance(image_data, str):
             image = Image.open(image_data).convert("RGB")
+        else:
+            raise ValueError("Image must be either bytes or Image object.")
+
         messages = [
             {
                 "role": "user",

@@ -35,7 +35,7 @@ class ColPaliInfer:
                 device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.
             ).eval()
             self.model.to(self.device)  # Ensure model is on the correct device.
-        elif device is not None and (isinstance(device, str) and 'cpu' not in device):
+        elif device is not None and (isinstance(device, str) and 'cpu' not in device): ## for mps
             self.model = ColQwen2.from_pretrained(
                 model_name,
                 device_map="auto"  # Adjusts automatically; you can specify explicitly if needed.

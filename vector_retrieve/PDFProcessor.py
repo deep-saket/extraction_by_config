@@ -2,11 +2,12 @@ import os
 import uuid
 import fitz  # PyMuPDF
 from PIL import Image
-from io import BytesIO
 import torch
-from models.ColPaliInfer import ColPaliInfer
+from common import CallableComponent, ExtractionState
+from models import ModelManager
 
-class PDFProcessor:
+
+class PDFProcessor(CallableComponent):
     """
     A class for processing PDFs and generating embeddings for their pages.
     
@@ -14,11 +15,17 @@ class PDFProcessor:
     generates embeddings for those images using the ColPali model, and retrieves the most 
     relevant pages based on a text query.
     """
-    def __init__(self):
+    def __init__(self, colpali_infer):
         """
         Initializes the PDFProcessor by creating an instance of ColPaliInfer.
         """
-        self.colpali_infer = ColPaliInfer()
+        super().__init__()
+        self.colpali_infer = colpali_infer
+
+    def __call__(self, pdf_path: str):
+        # populate state
+        ExtractionState.images = self.pdf_to_images(pdf_path)
+        ExtractionState.embeddings = self.generate_embeddings(ExtractionState.images)
 
     def pdf_to_images(self, pdf_path):
         """
