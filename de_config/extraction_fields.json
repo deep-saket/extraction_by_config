@@ -1,8 +1,12 @@
 [
     {
-        "field_name": "Summary",
-        "description": "A brief summary of the document",
-        "probable_pages": [1],
-        "type": "bullet_points"
+        "field_name": "",
+        "points": {
+            "value": "",
+            "post_processing_value": "",
+            "page_number": "",
+            "point_number" 1,
+        },
+        "key": ""
     }
 ]

@@ -1,6 +1,5 @@
 import yaml
 import json
-from models import ModelManager
 from src import Parser
 
 class LocalTest:
@@ -28,9 +27,6 @@ class LocalTest:
         """
         Executes the document extraction process based on the configuration.
         """
-        # Load models based on the configuration
-        ModelManager.load_config(self.config_path)
-        ModelManager.initialize_models()
 
         # Extract configuration parameters
         pdf_path = self.config.get('pdf_path')

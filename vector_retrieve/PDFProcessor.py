@@ -4,7 +4,6 @@ import fitz  # PyMuPDF
 from PIL import Image
 import torch
 from common import CallableComponent, ExtractionState
-from models import ModelManager
 
 
 class PDFProcessor(CallableComponent):
