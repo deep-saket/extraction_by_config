@@ -1,3 +1,4 @@
 from common.BaseComponent import BaseComponent
 from common.CallableComponent import CallableComponent
 from common.ExtractionState import ExtractionState
+from common.DirtyJsonParser import DirtyJsonParser
