@@ -31,7 +31,9 @@ class Parser(BaseComponent):
     def __init__(
             self,
             config_path: str = "config/settings.yml",
-            device: torch.device = torch.device("mps")
+            device: torch.device = torch.device("mps"),
+            vlm_candidate: str = "QwenV25Infer",
+            embedding_candidate: str = "ColPaliInfer",
     ):
         """
         Constructor:
@@ -44,14 +46,14 @@ class Parser(BaseComponent):
 
         # 1) Load and initialize models
         ModelManager.load_config(config_path)
-        ModelManager.initialize_models(device)
+        ModelManager.initialize_models(device, model_classes=[vlm_candidate, embedding_candidate])
 
         # 2) Instantiate PDFProcessor with the shared ColPaliInfer
-        self.pdf_processor = PDFProcessor(ModelManager.colpali_infer)
+        self.pdf_processor = PDFProcessor(getattr(ModelManager, embedding_candidate))
 
         # 3) Dynamically import and instantiate helper components now that ModelManager is ready
         self.prompt_builder = PromptBuilder()
-        self.vlm_processor = VLMProcessor(ModelManager.qwen_infer)
+        self.vlm_processor = VLMProcessor(getattr(ModelManager, vlm_candidate))
         self.page_finder = PageFinder(self.pdf_processor)
 
     def perform_de(

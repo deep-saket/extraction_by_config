@@ -40,7 +40,7 @@ class VLMProcessor(CallableComponent):
 
         # Validate against the appropriate generation model
         try:
-            generation_model.model_validate(parsed)
+            return generation_model.model_validate(parsed)
         except ValidationError as e:
             raise RuntimeError(f"VLM JSON failed schema validation: {e}") from e
 
