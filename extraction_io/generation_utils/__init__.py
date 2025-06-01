@@ -1,2 +1,2 @@
 from extraction_io.generation_utils.BulletPointsGeneration import BulletPointsGeneration
-from extraction_io.generation_utils.KVGeneration import KVGeneration
+from extraction_io.generation_utils.KeyValueGeneration import KeyValueGeneration

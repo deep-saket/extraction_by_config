@@ -15,8 +15,9 @@ class BulletPointsResultBuilder:
     @staticmethod
     def build(
         field_name: str,
-        bullets: List[Dict[str, Any]],
-        key: str
+        fragments: List[Dict[str, Any]],
+        key: str,
+        multipage: bool
     ) -> BulletPointsOutput:
         """
         Given a flat list of bullet dicts (each with "value",
@@ -25,11 +26,11 @@ class BulletPointsResultBuilder:
 
         Args:
           field_name: logical name of the field.
-          bullets:    list of dicts, each matching BulletPoint's schema.
+          fragments:    list of dicts, each matching BulletPoint's schema.
           key:        the literal search key (often same as description).
         """
         # 1) Build a list of BulletPoint instances
-        bp_models = [BulletPoint(**b) for b in bullets]
+        bp_models = [BulletPoint(**b) for b in fragments]
 
         # 2) Construct and return a validated BulletPointsOutput model
         return BulletPointsOutput(

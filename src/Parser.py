@@ -1,256 +1,226 @@
 # src/parsers/parser.py
 
-import json
-from typing import Union, List
+import importlib
+from typing import Union, List, Type, Any
 import torch
 
 from vector_retrieve import PDFProcessor
-from src.helper import PromptBuilder, VLMProcessor, PageFinder
 from models import ModelManager
-from common import ExtractionState
-from extraction_io.ExtractionItems import ExtractionItems
+from common import ExtractionState, BaseComponent
+from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
 from extraction_io.result_builders import KeyValueResultBuilder, BulletPointsResultBuilder
+from src.helper import PromptBuilder, VLMProcessor, PageFinder
 
 
-class Parser:
+class Parser(BaseComponent):
+    """
+    High‐level orchestrator for document extraction. Responsibilities:
+      1) Validate and store the extraction configuration (ExtractionItems).
+      2) Reset global state (images, embeddings, entries).
+      3) Convert the PDF into images & embeddings via PDFProcessor.
+      4) Instantiate helper components (PromptBuilder, VLMProcessor, PageFinder) once in __init__.
+      5) For each ExtractionItem, find relevant pages, then:
+           a. Dynamically instantiate the correct Parse* subclass.
+           b. Call its run(pages) method to gather raw fragments or bullets.
+           c. Feed those raw fragments/bullets into the appropriate ResultBuilder.
+           d. Validate and store the final Pydantic model in state.
+      6) After all items are processed, wrap state entries in ExtractionOutputs and write JSON.
+    """
+
     def __init__(
-        self,
-        extraction_config: Union[List[dict], ExtractionItems],
-        config_path: str = "config/settings.yml",
-        device: torch.device = torch.device("mps")
+            self,
+            config_path: str = "config/settings.yml",
+            device: torch.device = torch.device("mps")
     ):
         """
-        Initializes the Parser. Validates and stores extraction_config via Pydantic.
-
-        Args:
-            extraction_config: Either a raw list-of-dicts or an ExtractionItems object.
-            config_path:       Path to your YAML with model settings.
-            device:            The torch.device to run inference on ("cuda"/"mps"/"cpu").
+        Constructor:
+          - Call BaseComponent.__init__(config_path) to set up logger + config.
+          - Load model configuration and initialize Qwen + ColPali via ModelManager.
+          - Instantiate PDFProcessor.
+          - Instantiate PromptBuilder, VLMProcessor, PageFinder exactly once.
         """
-        # 1) Validate extraction_config up front
-        if isinstance(extraction_config, ExtractionItems):
-            self.extraction_config = extraction_config
-        else:
-            self.extraction_config = ExtractionItems.model_validate(extraction_config)
+        super().__init__(config_path)
 
-        # 2) Initialize models
+        # 1) Load and initialize models
         ModelManager.load_config(config_path)
         ModelManager.initialize_models(device)
 
-        # 3) Build helper components
-        self.pdf_processor  = PDFProcessor(ModelManager.colpali_infer)
-        self.prompt_builder = PromptBuilder()
-        self.vlm_processor  = VLMProcessor(ModelManager.qwen_infer)
-        self.page_finder    = PageFinder(self.pdf_processor)
+        # 2) Instantiate PDFProcessor with the shared ColPaliInfer
+        self.pdf_processor = PDFProcessor(ModelManager.colpali_infer)
 
-    def perform_de(self, pdf_path: str, output_json_path: str) -> ExtractionOutputs:
+        # 3) Dynamically import and instantiate helper components now that ModelManager is ready
+        self.prompt_builder = PromptBuilder()
+        self.vlm_processor = VLMProcessor(ModelManager.qwen_infer)
+        self.page_finder = PageFinder(self.pdf_processor)
+
+    def perform_de(
+            self,
+            pdf_path: str,
+            extraction_items: Union[List[dict], ExtractionItems],
+            output_json_path: str
+    ) -> ExtractionOutputs:
         """
-        Top‐level document extraction. Steps:
-          1) Reset state
-          2) Populate images & embeddings
-          3) Process each config item into a validated output
-          4) Write JSON
+        Main entrypoint for document extraction.
+
+        Steps:
+          1) Validate `extraction_items` as a Pydantic ExtractionItems.
+          2) Reset ExtractionState (clears images, embeddings, entries).
+          3) Store extraction_items in global state.
+          4) Populate images & embeddings by calling PDFProcessor(pdf_path).
+          5) Process each item via _process_all_items().
+          6) Wrap all entries in ExtractionOutputs and write JSON to output_json_path.
+          7) Return the ExtractionOutputs Pydantic object.
         """
+        # 1) Validate `extraction_items`
+        if not isinstance(extraction_items, ExtractionItems):
+            extraction_items = ExtractionItems.model_validate(extraction_items)
+
+        self.logger.info("Resetting parser state...")
         self._reset_state()
+
+        self.logger.info("Storing extraction_items in global state...")
+        self._set_extraction_items_in_state(extraction_items)
+
+        self.logger.info("Converting PDF → images & embeddings...")
         self._populate_images_and_embeddings(pdf_path)
+
+        self.logger.info("Processing all extraction items...")
         self._process_all_items()
+
+        self.logger.info("Writing final JSON output...")
         return self._write_output(output_json_path)
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 1) Reset everything in ExtractionState so we start fresh
-    # ────────────────────────────────────────────────────────────────────────────
     def _reset_state(self):
+        """
+        Clear out any previously stored images, embeddings, and Pydantic entries.
+        Called at the beginning of each perform_de() run so that every document starts fresh.
+        """
         ExtractionState.reset()
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 2) Use PDFProcessor to fill ExtractionState.images & .embeddings
-    # ────────────────────────────────────────────────────────────────────────────
+    def _set_extraction_items_in_state(self, extraction_items: ExtractionItems):
+        """
+        Store the user’s list of ExtractionItem objects in global state so that all
+        downstream methods can refer to ExtractionState.get_extraction_items().
+        """
+        ExtractionState.set_extraction_items(extraction_items)
+
     def _populate_images_and_embeddings(self, pdf_path: str):
-        # PDFProcessor.__call__(pdf_path) will (internally) reset state and set images/embeddings
+        """
+        Invoke PDFProcessor.__call__(pdf_path), which:
+          a. Converts each page of the PDF into an image and stores (page_num, path) in state.
+          b. Generates image embeddings via ColPaliInfer and stores (page_num, tensor) in state.
+        """
         _ = self.pdf_processor(pdf_path)
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 3) Loop over each ExtractionItem in the config and produce entries
-    # ────────────────────────────────────────────────────────────────────────────
     def _process_all_items(self):
-        for item in self.extraction_config:
-            # Extract parameters from the typed Pydantic model:
-            fn      = item.field_name
-            desc    = item.description
-            extype  = item.type             # "key-value" or "bullet-points"
-            multi   = item.multipage_value
-            pages   = item.probable_pages or []
+        """
+        For each ExtractionItem in the user’s config:
+          1) Determine extype ("key-value" or "bullet-points").
+          2) Determine the list of pages: use `probable_pages` or call PageFinder on embeddings.
+          3) Dynamically instantiate the correct Parse* class via _get_parser_for_type().
+          4) Call parser_instance.run(pages) to get raw fragment/bullet dicts.
+          5) Feed those raw fragments/bullets into the corresponding ResultBuilder (KeyValueResultBuilder or BulletPointsResultBuilder).
+          6) Validate final Pydantic model via ExtractionOutput.model_validate() and store it in state.
+        """
+        for idx, item in enumerate(ExtractionState.get_extraction_items()):
+            self.logger.info("=" * 80)
+            self.logger.info(f"[Parser] Processing item #{idx}: field_name = '{item.field_name}'")
+
+            extype = item.type  # e.g., "key-value" or "bullet-points"
+            pages = item.probable_pages or []
 
             if not pages:
+                # If no explicit probable_pages, use PageFinder to get top‐k pages
                 pages = self.page_finder(
                     ExtractionState.get_embeddings(),
-                    fn,
-                    desc
+                    item.field_name,
+                    item.description
                 )
 
-            # Dispatch based on type
-            if extype == "key-value":
-                model_obj = self._process_key_value(fn, desc, pages, multi)
-            else:  # "bullet-points"
-                model_obj = self._process_bullet_points(fn, desc, pages)
+            # 3) Dynamically load and instantiate ParseKeyValue or ParseBulletPoints
+            parser_response_model = self._get_parser_generation_model(item)
+            parser_instance = self._get_parser_for_type(item, parser_response_model)
+            # 4) Gather raw data (list of dicts) by calling parser_instance.run(pages)
+            raw_data = parser_instance(pages)
 
-            # Store the validated Pydantic model into ExtractionState.entries
-            ExtractionState.add_entry(model_obj)
+            # 5) Build and validate a Pydantic model
+            extype = item.type  # e.g. "key-value" or "bullet-points"
+            cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
+            builder_class_name = f"{cls_suffix}ResultBuilder"
+            builder_module = importlib.import_module("extraction_io.result_builders")
+            builder_cls: Type = getattr(builder_module, builder_class_name)
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 3.a) Handle a single key-value field: gather fragments + validate
-    # ────────────────────────────────────────────────────────────────────────────
-    def _process_key_value(
-        self,
-        field_name: str,
-        description: str,
-        pages: List[int],
-        multipage: bool
-    ) -> ExtractionOutput:
+            kwargs = {
+                "field_name": item.field_name,
+                "key": item.description,
+                "fragments": raw_data,
+                "multipage": item.multipage_value
+            }
+            # Call the builder
+            built_model = builder_cls.build(**kwargs)
+            # Always wrap in ExtractionOutput
+            model_obj = ExtractionOutput.model_validate(built_model.model_dump())
+
+            # 6) Add validated model to global state
+            ExtractionState.add_response(model_obj)
+
+            # Debug: log extracted values or points
+            root = model_obj.root
+            if hasattr(root, "value"):
+                self.logger.info(f"[Parser] Extracted value for '{item.field_name}': {root.value!r}")
+            else:
+                pts = [pt.value for pt in root.points]
+                self.logger.info(f"[Parser] Extracted points for '{item.field_name}': {pts}")
+
+    def _get_parser_for_type(self, item: ExtractionItem, parser_response_model: Any):
         """
-        Returns a validated KeyValueOutput model.
+        Dynamically load and instantiate:
+          - src.parsers.parse_key_value.ParseKeyValue
+          - src.parsers.parse_bullet_points.ParseBulletPoints
+          - Or fallback to ParseBase (will raise if not implemented)
+
+        Naming convention:
+          extype = "key-value" → cls_suffix="KeyValue" → class_name="ParseKeyValue"
+          module_name = "src.parsers.parse_key_value"
         """
-        fragments = self._gather_fragments(field_name, description, pages)
-        # Delegate to the builder to create a Pydantic KeyValueOutput
-        kv_model = KeyValueResultBuilder.build(
-            field_name=field_name,
-            fragments=fragments,
-            key=description,
-            multipage=multipage
-        )
-        # Wrap in ExtractionOutput so that uniform validation is next:
-        return ExtractionOutput.model_validate(kv_model.model_dump())
+        extype = item.type
+        cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
+        class_name = f"Parse{cls_suffix}"
+        module_name = f"src.parsers"
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 3.b) Handle a single bullet-points field: gather bullets + validate
-    # ────────────────────────────────────────────────────────────────────────────
-    def _process_bullet_points(
-        self,
-        field_name: str,
-        description: str,
-        pages: List[int]
-    ) -> ExtractionOutput:
-        """
-        Returns a validated BulletPointsOutput model.
-        """
-        bullets = self._gather_bullets(field_name, description, pages)
-        # Delegate to the builder to create a Pydantic BulletPointsOutput
-        bp_model = BulletPointsResultBuilder.build(
-            field_name=field_name,
-            bullets=bullets,
-            key=description
-        )
-        return ExtractionOutput.model_validate(bp_model.model_dump())
+        try:
+            module = importlib.import_module(module_name)
+            parser_cls: Type = getattr(module, class_name)
+        except (ModuleNotFoundError, AttributeError):
+            # Fallback to ParseBase (which will error if no _process_page is defined)
+            from src.parsers.ParseBase import ParseBase
+            parser_cls = ParseBase
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 3.a.i) Gather page‐level fragments for a key-value field
-    # ────────────────────────────────────────────────────────────────────────────
-    def _gather_fragments(
-        self,
-        field_name: str,
-        description: str,
-        pages: List[int]
-    ) -> List[dict]:
-        """
-        Returns a list of dicts, each containing:
-          {
-            "value": str,
-            "post_processing_value": Optional[str],
-            "page_number": int
-          }
-        """
-        fragments = []
-        for pg in pages:
-            for num, img_path in ExtractionState.get_images():
-                if num == pg:
-                    from PIL import Image
-                    img = Image.open(img_path).convert("RGB")
-                    prompt = self.prompt_builder(field_name, description, pg, "key-value")
-                    raw_output = self.vlm_processor(img, prompt, typ="key-value")
+        return parser_cls(item, self.vlm_processor, self.prompt_builder, parser_response_model)
 
-                    if isinstance(raw_output, dict):
-                        val  = raw_output.get("value", "")
-                        post = raw_output.get("post_processing_value", None)
-                    elif hasattr(raw_output, "value"):
-                        val  = getattr(raw_output, "value", "")
-                        post = getattr(raw_output, "post_processing_value", None)
-                    else:
-                        val  = str(raw_output)
-                        post = None
+    def _get_parser_generation_model(self, item: ExtractionItem):
+        # Choose JSON schema from the appropriate Pydantic model
+        extype = item.type
+        cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
+        class_name = f"{cls_suffix}Generation"
+        module_name = f"extraction_io.generation_utils"
 
-                    fragments.append({
-                        "value": val,
-                        "post_processing_value": post,
-                        "page_number": pg
-                    })
-                    break
-        return fragments
+        module = importlib.import_module(module_name)
+        model_cls: Type = getattr(module, class_name)
 
-    # ────────────────────────────────────────────────────────────────────────────
-    # 3.b.i) Gather page‐level bullets for a bullet-points field
-    # ────────────────────────────────────────────────────────────────────────────
-    def _gather_bullets(
-        self,
-        field_name: str,
-        description: str,
-        pages: List[int]
-    ) -> List[dict]:
-        """
-        Returns a flat list of dicts, each containing:
-          {
-            "value": str,
-            "post_processing_value": None,
-            "page_number": int,
-            "point_number": int
-          }
-        """
-        all_points = []
-        point_idx = 1
+        return model_cls
 
-        for pg in pages:
-            for num, img_path in ExtractionState.get_images():
-                if num == pg:
-                    from PIL import Image
-                    img = Image.open(img_path).convert("RGB")
-                    prompt = self.prompt_builder(field_name, description, pg, "bullet-points")
-                    raw_output = self.vlm_processor(img, prompt, typ="bullet-points")
-
-                    # Normalize raw_output into a list of strings
-                    candidates: List[str] = []
-                    if isinstance(raw_output, dict) and "points" in raw_output:
-                        candidates = raw_output["points"]
-                    elif hasattr(raw_output, "points"):
-                        candidates = getattr(raw_output, "points", [])
-                    elif isinstance(raw_output, list):
-                        candidates = [str(x) for x in raw_output]
-                    elif isinstance(raw_output, str):
-                        candidates = [
-                            line.strip()
-                            for line in raw_output.splitlines()
-                            if line.strip()
-                        ]
-
-                    for b in candidates:
-                        all_points.append({
-                            "value": b,
-                            "post_processing_value": None,
-                            "page_number": pg,
-                            "point_number": point_idx
-                        })
-                        point_idx += 1
-                    break
-        return all_points
-
-    # ────────────────────────────────────────────────────────────────────────────
-    # 4) Read all Pydantic entries and write final JSON
-    # ────────────────────────────────────────────────────────────────────────────
     def _write_output(self, output_json_path: str) -> ExtractionOutputs:
         """
-        Wraps all entries in ExtractionOutputs, validates, and writes JSON.
+        After all items have been processed and validated, gather them from ExtractionState:
+          a. Each entry is a Pydantic ExtractionOutput.
+          b. Call .model_dump() on each to get a raw dict.
+          c. Wrap the list of dicts in ExtractionOutputs.model_validate().
+          d. Write the pretty-printed JSON to output_json_path.
+          e. Return the ExtractionOutputs instance.
         """
-        all_models = ExtractionState.get_entries()
-        # Each is already a Pydantic model, so model_dump() → raw dict
+        all_models = ExtractionState.get_responses()
         raw_list = [m.model_dump() for m in all_models]
         final_output = ExtractionOutputs.model_validate(raw_list)
 

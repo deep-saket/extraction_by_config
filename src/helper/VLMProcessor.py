@@ -1,7 +1,7 @@
 from common import CallableComponent
 import json
 from pydantic import ValidationError
-from extraction_io.generation_utils import KVGeneration, BulletPointsGeneration
+from extraction_io.generation_utils import KeyValueGeneration, BulletPointsGeneration
 from common import DirtyJsonParser
 
 
@@ -13,7 +13,7 @@ class VLMProcessor(CallableComponent):
         super().__init__()
         self.vlm_infer = vlm_infer
 
-    def extract(self, image_data, prompt, typ):
+    def extract(self, image_data, prompt, generation_model):
         """
         Runs the VLM inference on image_data with the given prompt, then parses the JSON and validates.
 
@@ -40,14 +40,9 @@ class VLMProcessor(CallableComponent):
 
         # Validate against the appropriate generation model
         try:
-            if typ == "key-value":
-                return KVGeneration.model_validate(parsed)
-            elif typ == "bullet-points":
-                return BulletPointsGeneration.model_validate(parsed)
-            else:
-                raise ValueError(f"Unknown extraction type for JSON validation: {typ!r}")
+            generation_model.model_validate(parsed)
         except ValidationError as e:
             raise RuntimeError(f"VLM JSON failed schema validation: {e}") from e
 
-    def __call__(self, image_data, prompt, typ, *args, **kwargs):
-        return self.extract(image_data, prompt, typ)
+    def __call__(self, image_data, prompt, generation_model, *args, **kwargs):
+        return self.extract(image_data, prompt, generation_model)

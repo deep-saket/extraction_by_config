@@ -1,8 +1,9 @@
 # common/extraction_state.py
 from dataclasses import dataclass, field
-from typing import List, Tuple, Any
+from typing import List, Tuple, Any, Union
 import torch
 from extraction_io.ExtractionOutputs import ExtractionOutput
+from extraction_io.ExtractionItems import ExtractionItems
 
 
 @dataclass
@@ -11,9 +12,10 @@ class ExtractionState:
     Holds global images, embeddings, and extraction entries state for a document extraction cycle.
     Uses class variables to maintain state.
     """
+    extraction_items: Union[List[dict], ExtractionItems]
     images: List[Tuple[int, str]] = field(default_factory=list)
     embeddings: List[Tuple[int, torch.Tensor]] = field(default_factory=list)
-    entries: List[ExtractionOutput] = field(default_factory=list)  # Holds raw extraction entries or validated models
+    response: List[ExtractionOutput] = field(default_factory=list)  # Holds raw extraction entries or validated models
 
     @classmethod
     def reset(cls):
@@ -22,7 +24,8 @@ class ExtractionState:
         """
         cls.images = []
         cls.embeddings = []
-        cls.entries = []
+        cls.response = []
+        cls.extraction_config = None
 
     @classmethod
     def set_images(cls, imgs):
@@ -33,18 +36,22 @@ class ExtractionState:
         cls.embeddings = embs
 
     @classmethod
-    def add_entry(cls, entry: Any):
+    def add_response(cls, entry: Any):
         """
         Add a single extraction entry (could be a dict or Pydantic model).
         """
-        cls.entries.append(entry)
+        cls.response.append(entry)
 
     @classmethod
-    def set_entries(cls, entries_list: List[Any]):
+    def set_responses(cls, response_list: List[Any]):
         """
         Replace the entire entries list with a new list.
         """
-        cls.entries = entries_list
+        cls.response = response_list
+
+    @classmethod
+    def set_extraction_items(cls, extraction_items: Union[List[dict], ExtractionItems]):
+        cls.extraction_items = extraction_items
 
     @classmethod
     def get_images(cls):
@@ -55,5 +62,13 @@ class ExtractionState:
         return cls.embeddings
 
     @classmethod
-    def get_entries(cls):
-        return cls.entries
+    def get_responses(cls):
+        return cls.response
+
+    @classmethod
+    def get_extraction_items(cls):
+        return cls.extraction_items
+
+    @classmethod
+    def get_extraction_item(cls, idx: int):
+        return cls.extraction_items[idx]

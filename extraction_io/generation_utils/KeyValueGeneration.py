@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-class KVGeneration(BaseModel):
+class KeyValueGeneration(BaseModel):
     """
     Schema expected from VLM for a key-value extraction prompt.
     """

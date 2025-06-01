@@ -1,6 +1,7 @@
 import re
 import dirtyjson
 
+
 class DirtyJsonParser:
     """
     Attempts to extract the first JSON object from a raw VLM response,
@@ -67,6 +68,7 @@ class DirtyJsonParser:
         without_fences = cls._strip_markdown_fences(raw)
 
         # 2) Extract the first balanced { ... } block
+        print(without_fences)
         try:
             json_block = cls._extract_braced_block(without_fences)
         except ValueError as e:

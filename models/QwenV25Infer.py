@@ -113,9 +113,13 @@ class QwenV25Infer:
             return_tensors="pt",
         ).to(self.device)
 
+        # Record how many tokens the prompt took:
+        prompt_len = inputs["input_ids"].shape[-1]
+
         # Generate output
         with torch.no_grad():
-            generated_ids = self.model.generate(**inputs, max_new_tokens=128)
+            generated_ids = self.model.generate(**inputs, max_new_tokens=50000)
+        generated_ids = generated_ids[:, prompt_len:]
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return generated_text
 

@@ -12,6 +12,7 @@ class LocalTest:
         """
         self.config_path = config_path
         self.config = self._load_config()
+        self.parser = Parser(self.config_path)
 
     def _load_config(self):
         """
@@ -38,8 +39,7 @@ class LocalTest:
             extraction_config = json.load(file)
 
         # Initialize Parser and perform document extraction
-        parser = Parser(extraction_config)
-        parser.perform_de(pdf_path, output_json_path)
+        self.parser.perform_de(pdf_path, extraction_config, output_json_path)
         print(f"Extraction complete. Data saved to {output_json_path}.")
 
 if __name__ == "__main__":
