@@ -3,38 +3,47 @@
 from pydantic import BaseModel, Field, RootModel, model_validator
 from typing import List, Optional, Literal, Dict, Any
 
-
 class ExtractionItem(BaseModel):
-    """
-    Pydantic model for a single extraction or summarization configuration item.
-    """
-    field_name: str = Field(..., description="The unique key/name of the field to extract or summarize.")
-    description: str = Field(..., description="A brief description of the field or summarization context.")
+    field_name: str = Field(
+        ...,
+        description="The unique key/name of the field to extract or summarize."
+    )
+    description: str = Field(
+        ...,
+        description="A brief description of the field/section context."
+    )
     probable_pages: Optional[List[int]] = Field(
         default_factory=list,
-        description="Specific page numbers to prioritize (1-indexed). For summarization with scope='pages', "
-                    "these pages will be concatenated."
+        description="(Optional) Explicit page numbers to prioritize (1-indexed)."
     )
     type: Literal["key-value", "bullet-points", "summarization"] = Field(
         ...,
-        description="Type of operation: 'key-value', 'bullet-points', or 'summarization'."
+        description="Operation type: 'key-value', 'bullet-points', or 'summarization'."
     )
     multipage_value: bool = Field(
         False,
-        description="(Extraction) Indicates if the extracted value may span multiple pages. Ignored for summarization."
+        description="(Extraction only) Whether the value may span multiple pages."
     )
     multiline_value: bool = Field(
         False,
-        description="(Extraction) Indicates if the extracted value may contain multiple lines. Ignored for summarization."
+        description="(Extraction only) Whether the value may contain multiple lines."
     )
     extra_rules: Dict[str, Any] = Field(
         default_factory=dict,
-        description="Any additional rules not explicitly defined. "
-                    "For summarization with scope='extracted_fields', supply "
-                    "'fields_to_summarize': List[str] here."
+        description="Any additional rules. For summarization with scope='extracted_fields', "
+                    "use extra_rules['fields_to_summarize'] = List[str]."
     )
 
-    # Summarization-specific fields (only meaningful when type=='summarization')
+    # NEW: optional list of embedding‐query phrases (instead of using field_name+description)
+    search_keys: Optional[List[str]] = Field(
+        default_factory=list,
+        description=(
+            "If provided, PageFinder will embed‐query each phrase to find relevant pages. "
+            "Otherwise it defaults to embedding 'field_name + description'."
+        )
+    )
+
+    # Summarization‐specific fields (only used when type=='summarization')
     summary_scope: Optional[Literal["whole", "section", "pages", "extracted_fields"]] = Field(
         None,
         description=(
@@ -53,9 +62,6 @@ class ExtractionItem(BaseModel):
 
     @model_validator(mode="after")
     def validate_summarization_fields(cls, values: dict) -> dict:
-        """
-        Ensure that when type=='summarization', required fields are present based on summary_scope.
-        """
         typ = values.type
         scope = values.summary_scope
         extra = values.extra_rules
@@ -72,12 +78,14 @@ class ExtractionItem(BaseModel):
             if scope == "extracted_fields":
                 fields = extra.get("fields_to_summarize")
                 if not fields or not isinstance(fields, list):
-                    raise ValueError("When summary_scope=='extracted_fields', extra_rules['fields_to_summarize'] "
-                                     "must be a non-empty list of field_name strings.")
+                    raise ValueError(
+                        "When summary_scope=='extracted_fields', extra_rules['fields_to_summarize'] "
+                        "must be a non-empty list of field_name strings."
+                    )
         return values
 
     class Config:
-        extra = "allow"  # permit additional keys under extra_rules for future extensions
+        extra = "allow"
 
 
 class ExtractionItems(RootModel[List[ExtractionItem]]):

@@ -17,7 +17,7 @@
     },
     {
       "field_name": "ContentsNotInsured",
-      "description": "List of items not insured under 'Contents Insurance'",
+      "description": "List of items not insured under Contents Insurance. ",
       "type": "bullet-points",
       "probable_pages": [],
       "multipage_value": false,

@@ -4,7 +4,6 @@ import json
 from typing import Any, Dict
 from common import CallableComponent
 from extraction_io.ExtractionItems import ExtractionItem
-from extraction_io.generation_utils import KeyValueGeneration, BulletPointsGeneration
 
 class PromptBuilder(CallableComponent):
     """
@@ -98,7 +97,8 @@ class PromptBuilder(CallableComponent):
             extraction_type=item.type,
             prev_value=prev_value,
             instruction=instruction_text,
-            postfix=postfix_templ
+            postfix=postfix_templ,
+            search_keys=item.search_keys
         )
 
         full_prompt = system_part + "\n" + user_part

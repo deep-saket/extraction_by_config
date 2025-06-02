@@ -129,15 +129,14 @@ class Parser(BaseComponent):
             self.logger.info("=" * 80)
             self.logger.info(f"[Parser] Processing item #{idx}: field_name = '{item.field_name}'")
 
-            extype = item.type  # e.g., "key-value" or "bullet-points"
-            pages = item.probable_pages or []
+            ExtractionState.update_curr_extraction_item(idx)
 
+            pages = item.probable_pages or []
             if not pages:
                 # If no explicit probable_pages, use PageFinder to get top‐k pages
                 pages = self.page_finder(
                     ExtractionState.get_embeddings(),
-                    item.field_name,
-                    item.description
+                    item
                 )
 
             # 3) Dynamically load and instantiate ParseKeyValue or ParseBulletPoints

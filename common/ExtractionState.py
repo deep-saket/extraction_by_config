@@ -13,6 +13,7 @@ class ExtractionState:
     Uses class variables to maintain state.
     """
     extraction_items: Union[List[dict], ExtractionItems]
+    current_extraction_item: ExtractionItems
     images: List[Tuple[int, str]] = field(default_factory=list)
     embeddings: List[Tuple[int, torch.Tensor]] = field(default_factory=list)
     response: List[ExtractionOutput] = field(default_factory=list)  # Holds raw extraction entries or validated models
@@ -26,6 +27,10 @@ class ExtractionState:
         cls.embeddings = []
         cls.response = []
         cls.extraction_config = None
+
+    @classmethod
+    def update_curr_extraction_item(cls, idx: int):
+        cls.current_extraction_item = cls.extraction_items[idx]
 
     @classmethod
     def set_images(cls, imgs):
@@ -72,3 +77,7 @@ class ExtractionState:
     @classmethod
     def get_extraction_item(cls, idx: int):
         return cls.extraction_items[idx]
+
+    @classmethod
+    def get_current_extraction_item(cls):
+        return cls.current_extraction_item
