@@ -2,8 +2,6 @@ from typing import List, Optional, Dict, Any
 from extraction_io.ExtractionOutputs import (
     KeyValueOutput,
     KVFragment,
-    BulletPointsOutput,
-    BulletPoint
 )
 
 class KeyValueResultBuilder:
@@ -16,7 +14,9 @@ class KeyValueResultBuilder:
         field_name: str,
         fragments: List[Dict[str, Any]],
         key: str,
-        multipage: bool
+        multipage: bool,
+        *args,
+        **kwargs
     ) -> KeyValueOutput:
         """
         Given a list of page‐level fragments (each with keys "value",

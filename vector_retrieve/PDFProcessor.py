@@ -42,6 +42,8 @@ class PDFProcessor(CallableComponent):
         # Create a unique temporary directory using uuid
         tmp_dir = os.path.join("./tmp", str(uuid.uuid4()))
         os.makedirs(tmp_dir, exist_ok=True)
+
+        self.logger.info(f"total number of pages in PDF: {len(doc)}")
         
         # Process each page in the PDF
         for page_num in range(len(doc)):
@@ -62,14 +64,12 @@ class PDFProcessor(CallableComponent):
         Returns:
             list of tuples: Each tuple contains the page number (int) and its embedding (torch.Tensor).
         """
-        print("images = ", images)
         embeddings = []
         for page_num, image_path in images:
             # Open the image file
             image = Image.open(image_path).convert("RGB")
             # Get the image embedding using ColPaliInfer
             embedding = self.colpali_infer.get_image_embedding(image)
-            print('embedding.shape =', embedding.shape)
             # If embedding has shape (1, embed_dim), squeeze to (embed_dim,)
             if embedding.dim() == 2 and embedding.shape[0] == 1:
                 embedding = embedding.squeeze(0)

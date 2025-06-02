@@ -17,7 +17,9 @@ class BulletPointsResultBuilder:
         field_name: str,
         fragments: List[Dict[str, Any]],
         key: str,
-        multipage: bool
+        multipage: bool,
+        *args,
+        **kwargs
     ) -> BulletPointsOutput:
         """
         Given a flat list of bullet dicts (each with "value",

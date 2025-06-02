@@ -21,7 +21,7 @@ class ParseKeyValue(ParseBase):
     def _process_page(
         self,
         page_num: int,
-        prev_value: str
+        page_result: List[Any]
     ) -> Dict[str, object]:
         """
         1) Locate the image for page_num.
@@ -30,6 +30,14 @@ class ParseKeyValue(ParseBase):
         4) Return {"value": ..., "post_processing_value": ..., "page_number": page_num}.
         """
         # Find the matching image path
+        raw_val = [
+            {
+                "page_number": pr["page_number"],
+                "values": pr["value"]
+            }
+            for pr in page_result
+        ]
+        prev_value = f"{raw_val}"
         image_path = None
         for (num, path) in ExtractionState.get_images():
             if num == page_num:

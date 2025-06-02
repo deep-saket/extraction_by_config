@@ -71,17 +71,17 @@ class ParseBase(CallableComponent):
              - If result is a list, extend; prev_value does not change.
           d. Return a flat list of fragment/point dicts.
         """
+        pages = sorted(pages)
         # 1) Pull in the Pydantic JSON schema for instructions
         schema_dict = self._choose_schema()
         schema_text = json.dumps(schema_dict, indent=2) if schema_dict else ""
         self.logger.debug(f"[ParseBase] Schema for '{self.item.field_name}':\n{schema_text}")
 
         all_results: List[Dict[str, Any]] = []
-        prev_value = ""  # Running concatenation for multi-page key-value extractions
 
         for pg in pages:
             # Delegate per-page work to _process_page
-            page_result = self._process_page(pg, prev_value)
+            page_result = self._process_page(pg, all_results)
             if page_result is None:
                 # Skip if no content extracted on this page
                 continue
@@ -92,8 +92,6 @@ class ParseBase(CallableComponent):
             else:
                 all_results.append(page_result)
                 # Update prev_value by concatenating the raw "value" from this page
-                raw_val = page_result.get("value", "")
-                prev_value += raw_val
 
         return all_results
 

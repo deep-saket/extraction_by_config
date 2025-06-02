@@ -21,7 +21,7 @@ class ParseBulletPoints(ParseBase):
     def _process_page(
         self,
         page_num: int,
-        prev_value: str  # Not used for bullet-points
+        page_result: List[Any]  # Not used for bullet-points
     ) -> List[Dict[str, object]]:
         """
         1) Locate the image for page_num.
@@ -29,6 +29,10 @@ class ParseBulletPoints(ParseBase):
         3) Parse the VLM output into a list of bullet dicts.
         4) Return List[{"value": ..., "post_processing_value": None, "page_number": page_num, "point_number": idx}, ...].
         """
+        raw_val = [{"page_number": pr["page_number"], "values": pr["value"]} for pr in page_result]
+        prev_value = f"{raw_val}"
+        n_bulltes = len(page_result)
+
         # Find the matching image path
         image_path = None
         for (num, path) in ExtractionState.get_images():
@@ -43,7 +47,7 @@ class ParseBulletPoints(ParseBase):
         img = Image.open(image_path).convert("RGB")
 
         # Build the prompt (prev_value not needed)
-        prompt = self.prompt_builder(self.item, self.parser_response_model_schema, "")
+        prompt = self.prompt_builder(self.item, self.parser_response_model_schema, prev_value)
 
         # Call the VLM to get raw output
         raw_output = self.vlm_processor(img, prompt, self.parser_response_model)
@@ -61,7 +65,7 @@ class ParseBulletPoints(ParseBase):
 
         # Build and return the list of bullet dicts
         results: List[Dict[str, object]] = []
-        idx = 1
+        idx = n_bulltes + 1
         for b in bullets:
             results.append({
                 "value": b,
