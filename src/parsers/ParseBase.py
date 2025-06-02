@@ -3,7 +3,7 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from common import CallableComponent
+from common import CallableComponent, ExtractionState
 from extraction_io.ExtractionItems import ExtractionItem
 
 class ParseBase(CallableComponent):
@@ -71,7 +71,6 @@ class ParseBase(CallableComponent):
              - If result is a list, extend; prev_value does not change.
           d. Return a flat list of fragment/point dicts.
         """
-        pages = sorted(pages)
         # 1) Pull in the Pydantic JSON schema for instructions
         schema_dict = self._choose_schema()
         schema_text = json.dumps(schema_dict, indent=2) if schema_dict else ""
@@ -92,6 +91,9 @@ class ParseBase(CallableComponent):
             else:
                 all_results.append(page_result)
                 # Update prev_value by concatenating the raw "value" from this page
+
+            if not self.item.multipage_value:
+                break
 
         return all_results
 

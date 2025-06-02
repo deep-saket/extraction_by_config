@@ -134,10 +134,7 @@ class Parser(BaseComponent):
             pages = item.probable_pages or []
             if not pages:
                 # If no explicit probable_pages, use PageFinder to get top‐k pages
-                pages = self.page_finder(
-                    ExtractionState.get_embeddings(),
-                    item
-                )
+                pages = self.page_finder()
 
             # 3) Dynamically load and instantiate ParseKeyValue or ParseBulletPoints
             parser_response_model = self._get_parser_generation_model(item)
