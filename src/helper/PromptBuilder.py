@@ -16,6 +16,7 @@ class PromptBuilder(CallableComponent):
     def __init__(self, template_path: str = "config/prompts.yml"):
         super().__init__()
         if PromptBuilder._templates is None:
+            template_path = os.path.join(self.project_root, template_path)
             PromptBuilder._load_templates(template_path)
 
     @classmethod
