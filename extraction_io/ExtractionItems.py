@@ -44,7 +44,7 @@ class ExtractionItem(BaseModel):
     )
 
     # Summarization‐specific fields (only used when type=='summarization')
-    summary_scope: Optional[Literal["whole", "section", "pages", "extracted_fields"]] = Field(
+    scope: Optional[Literal["whole", "section", "pages", "extracted_fields"]] = Field(
         None,
         description=(
             "When type=='summarization', defines what to summarize:\n"
@@ -63,12 +63,12 @@ class ExtractionItem(BaseModel):
     @model_validator(mode="after")
     def validate_summarization_fields(cls, values: dict) -> dict:
         typ = values.type
-        scope = values.summary_scope
+        scope = values.scope
         extra = values.extra_rules
 
         if typ == "summarization":
             if scope is None:
-                raise ValueError("When type=='summarization', 'summary_scope' must be provided.")
+                raise ValueError("When type=='summarization', 'scope' must be provided.")
             if scope == "section" and not values.section_name:
                 raise ValueError("When summary_scope=='section', 'section_name' must be provided.")
             if scope == "pages":
@@ -82,6 +82,18 @@ class ExtractionItem(BaseModel):
                         "When summary_scope=='extracted_fields', extra_rules['fields_to_summarize'] "
                         "must be a non-empty list of field_name strings."
                     )
+        return values
+
+    model_validator(mode="after")
+    def validate_checkbox_fields(cls, values: dict) -> dict:
+        typ = values.type
+        scope = values.scope
+
+        if typ == "checkbox":
+            if scope is None:
+                raise ValueError("When type=='chwckbox', 'scope' must be provided.")
+            if scope not in  ["multi_value", "single_value"]:
+                raise ValueError("When summary_scope tyoe is invalid', 'scope' must be one of ['multi_value', 'single_value'].")
         return values
 
     class Config:

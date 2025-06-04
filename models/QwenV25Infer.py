@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 from huggingface_hub import InferenceClient
 
+
 class QwenV25Infer:
     """
     A class to perform inference using the Qwen2.5-VL model, either locally or via an API.

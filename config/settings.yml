@@ -4,6 +4,6 @@ QwenV25Infer_model_name_or_url: "Qwen/Qwen2.5-VL-3B-Instruct"  # For local loadi
 ColPaliInfer_model_name_or_url: "vidore/colqwen2-v1.0"  # Replace with the actual model name or URL
 api_endpoint: ""  # For API loading
 
-pdf_path: "/Users/saketm10/Projects/extraction_by_config/dataset/home_pds_0322.pdf"
+pdf_path: "dataset/home_pds_0322.pdf"
 output_json_path: "output/home_pds_0322.json"
 extraction_config_path: "de_config/home_pds_0322.json"

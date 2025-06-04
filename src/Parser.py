@@ -9,7 +9,6 @@ from models import ModelManager
 from common import ExtractionState, BaseComponent
 from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
-from extraction_io.result_builders import KeyValueResultBuilder, BulletPointsResultBuilder
 from src.helper import PromptBuilder, VLMProcessor, PageFinder
 
 
