@@ -1,0 +1,3 @@
+pdf_path: "dataset/home_pds_0322.pdf"
+output_json_path: "output/home_pds_0322.json"
+extraction_config_path: "de_config/home_pds_0322.json"
