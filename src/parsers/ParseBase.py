@@ -94,6 +94,8 @@ class ParseBase(CallableComponent):
 
             if not self.item.multipage_value:
                 break
+            elif not page_result.get("multipage_value"):
+                break
 
         return all_results
 

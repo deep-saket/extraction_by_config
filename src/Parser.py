@@ -166,11 +166,7 @@ class Parser(BaseComponent):
 
             # Debug: log extracted values or points
             root = model_obj.root
-            if hasattr(root, "value"):
-                self.logger.info(f"[Parser] Extracted value for '{item.field_name}': {root.value!r}")
-            else:
-                pts = [pt.value for pt in root.points]
-                self.logger.info(f"[Parser] Extracted points for '{item.field_name}': {pts}")
+            self.logger.info(f"[Parser] Extracted value for '{item.field_name}': {root.value!r}")
 
     def _get_parser_for_type(self, item: ExtractionItem, parser_response_model: Any):
         """

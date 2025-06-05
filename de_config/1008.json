@@ -9,7 +9,8 @@
     "field_name": "OccupancyStatus",
     "description": "Occupancy status checkbox (Primary Residence / Second Home / Investment Property)",
     "probable_pages": [1],
-    "type": "key-value"
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "SalesPrice",
@@ -39,7 +40,8 @@
     "field_name": "PropertyUsage",
     "description": "Property usage type (e.g., 1 unit, 2 units, etc.)",
     "probable_pages": [1],
-    "type": "key-value"
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "ProjectName",
@@ -53,33 +55,29 @@
     "field_name": "LoanType",
     "description": "Type of loan (e.g., Conventional, FHA, VA, etc.)",
     "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "AmortizationType",
     "description": "Amortization type (Fixed-Rate monthly/biweekly, ARM, Balloon, etc.)",
     "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "LoanPurpose",
     "description": "Purpose of loan (Purchase, Refinance, etc.)",
     "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "LienPosition",
     "description": "Lien position (First Mortgage, Second Mortgage, etc.)",
     "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
+    "type": "checkbox",
+    "scope": "single_value"
   },
   {
     "field_name": "LoanAmount",

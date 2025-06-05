@@ -17,7 +17,6 @@ postfix: |
 
 # ------------------------------------------
 # 3) Base templates for each extraction type (no page references)
-#    Now including detailed guidance for bullet-point segmentation.
 # ------------------------------------------
 user:
   key_value: |
@@ -63,6 +62,16 @@ user:
     {instruction}
     {postfix}
 
+  summarization: |
+    Now: summarize the requested content for field "{field_name}".
+    Description: {description}
+    {instruction}
+    {postfix}
+
+  checkbox: |
+    Now: extract the checkbox selection(s) for "{field_name}" (description: {description}).
+    {instruction}
+    {postfix}
 
 fallback: |
   Extract the field "{field_name}" (description: {description}) as {extraction_type}.
@@ -72,10 +81,9 @@ fallback: |
 
 # ------------------------------------------
 # 4) Instruction fragments (keys must match ExtractionItem attributes)
-#    Excluding bullet_points which is now embedded above.
 # ------------------------------------------
 instructions:
-  # 4.a) When item.search_keys is provided, explain what these keys are and how to use them.
+  # 4.a) When item.search_keys is provided:
   search_keys: |
     • "search_keys" are one or more short phrases or headings you supply in your DE config.
       They help the model locate the correct section(s) or page(s) in the document by embedding similarity.
@@ -83,66 +91,72 @@ instructions:
     • If none of these exact phrases appear verbatim, the model will attempt a semantic match:
       – It looks for pages whose content is semantically similar to ANY of the search_keys.
       – If no strong match is found, it falls back to embedding the combination of field_name + description.
-    • If you leave "search_keys" empty or omit it entirely, the model uses: 
-    search_kyes for this extraction_item = {search_keys}
+    • If you leave "search_keys" empty or omit it entirely, then:
+      search_keys for this extraction_item = {search_keys}
 
-  # 4.b) When item.multipage_value == true (for key-value extraction spanning multiple pages)
+  # 4.b) When item.multipage_value == true (any extraction type that can span pages):
   multipage_value: |
-    • This field may span multiple pages.
-    • At each page, if you find part of the value, set "continue_next_page": true (unless it’s the last fragment).
-    • When no more fragments remain, set "continue_next_page": false.
-    • If the field is not present on a given page, set "value": "" and "continue_next_page": false.
-    • Each JSON fragment must follow:
-      {
-        "field_name": "<field_name>",
-        "value": "<raw text fragment from this page>",
-        "post_processing_value": "<normalized form or null>",
-        "continue_next_page": <true|false>
-      }
+    • This extraction may span multiple pages. On each page:
+      – If you find (part of) the content, include it in the JSON output and set `"continue_next_page": true`.
+      – If it’s the final fragment (no more pages remain), set `"continue_next_page": false`.
+    • If the content is not present on a given page, set the appropriate output field(s) to empty 
+      (for key-value: `"value": ""`; for checkbox: `"selected_option": ""` or `"selected_options": []`) 
+      and `"continue_next_page": false`.
+    • **Note:** The exact key names in the JSON output will follow the schema injected by the system prompt.
 
-  # 4.c) When item.multiline_value == true (for key-value extraction with multiple lines on a single page)
+  # 4.c) When item.multiline_value == true (key-value on one page but multi-line block):
   multiline_value: |
-    • This field may contain multiple lines but will not span pages.
-    • Capture the entire block of text, preserving line breaks in "value".
-    • Always set "continue_next_page": false (single-page).
-    • If the block is not found, set "value": "" and "continue_next_page": false.
+    • This field may contain multiple lines but will not span across pages.
+    • Capture the entire block of text, preserving line breaks in `"value"`.
+    • Always set `"continue_next_page": false` (single-page).
+    • If that multi-line block is not found, set `"value": ""` and `"continue_next_page": false`.
 
-  # 4.d) When neither multipage_value nor multiline_value is true (simple single-line key-value)
+  # 4.d) When neither multipage_value nor multiline_value is true (simple single-line key-value):
   single: |
-    • This field is strictly single-page and single-line.
-    • Always set "continue_next_page": false.
-    • If not found on that page, set "value": "" and "continue_next_page": false.
+    • This field is strictly single-page and single-line (key-value only).
+    • Always set `"continue_next_page": false`.
+    • If not found on that page, set `"value": ""` and `"continue_next_page": false`.
 
-# ------------------------------------------
-# 5) Specific instructions grouped under "specific"
-# ------------------------------------------
-specific:
-  # 5.a) Summary‐specific instructions
-  summary:
-    # 5.a.a) Whole‐document summarization
-    whole: |
-      • Summarize the entire document from start to finish, combining all relevant information.
-      • If the document has multiple sections or chapters, provide a coherent overview covering the main points of each.
-      • If no relevant content is found (e.g., an empty PDF), set "summary": "".
+  # 4.e) Summary-specific instruction: whole-document summarization
+  summary_whole: |
+    • Summarize the entire document from start to finish, combining all relevant information.
+    • If the document has multiple sections or chapters, provide a coherent overview covering the main points of each.
+    • If no relevant content is found (e.g., an empty PDF), set `"summary": ""`.
 
-    # 5.a.b) Named‐section summarization
-    section: |
-      • Summarize only the named section: "{section_name}".
-      • First, identify pages containing the exact heading "{section_name}". If search_keys are provided, use them to confirm the correct section.
-      • Once located, extract text or images of those pages and craft a concise summary focused on that section's content.
-      • If the section is not present or contains no substantive text, set "summary": "".
+  # 4.f) Summary-specific instruction: named-section summarization
+  summary_section: |
+    • Summarize only the named section: "{section_name}".
+    • First, identify pages containing the exact heading "{section_name}". If search_keys are provided, use them to confirm you’re in the right section.
+    • Once located, extract text (or images) of those pages and craft a concise summary focused solely on that section’s content.
+    • If the section is not present or contains no substantive text, set `"summary": ""`.
 
-    # 5.a.c) Fixed‐page summarization
-    pages: |
-      • Summarize exactly the specified pages: {probable_pages}.
-      • Concatenate the text/images from these pages in order, then produce one combined summary of that chunk.
-      • If any of these pages are missing, blank, or lack extractable text, ignore them but still produce a summary of whatever remains.
-      • If none of the specified pages yield content, set "summary": "".
+  # 4.g) Summary-specific instruction: fixed-page summarization
+  summary_pages: |
+    • Summarize exactly the specified pages: {probable_pages}.
+    • Concatenate the text/images from these pages in order, then produce one combined summary of that chunk.
+    • If any of these pages are missing or lack extractable text, ignore them and still summarize what remains.
+    • If none of the specified pages yield content, set `"summary": ""`.
 
-    # 5.a.d) Previously extracted‐fields summarization
-    fields: |
-      • Summarize the previously extracted fields listed under "fields_to_summarize": {fields_to_summarize}.
-      • Retrieve each field’s value (already extracted earlier) in the order provided, then concatenate these values.
-      • Create a unified, coherent summary that covers all these field contents without repeating text verbatim.
-      • If any individual field is missing or its extracted value is empty, omit it but still summarize remaining fields.
-      • If none of the specified fields exist or all are empty, set "summary": "".
+  # 4.h) Summary-specific instruction: previously extracted fields summarization
+  summary_fields: |
+    • Summarize the previously extracted fields listed under "fields_to_summarize": {fields_to_summarize}.
+    • Retrieve each field’s value (already extracted earlier) in the order provided, then concatenate these values.
+    • Create a unified, coherent summary that covers all these field contents without repeating text verbatim.
+    • If any individual field is missing or its extracted value is empty, omit it but still summarize remaining fields.
+    • If none of the specified fields exist or all are empty, set `"summary": ""`.
+
+  # 4.i) Checkbox-specific instruction: single_value (exactly one selection expected)
+  checkbox_single_value: |
+    • This checkbox expects exactly one selection.
+    • Return a JSON object with keys:
+      – `"field_name"` set to the logical field name
+      – `"selected_option"` set to the single chosen value (or `""` if none)
+      – `"continue_next_page"` set to `true` or `false` depending on whether more pages remain
+
+  # 4.j) Checkbox-specific instruction: multi_value (zero or more selections allowed)
+  checkbox_multi_value: |
+    • This checkbox allows multiple selections.
+    • Return a JSON object with keys:
+      – `"field_name"` set to the logical field name
+      – `"selected_options"` set to a list of chosen values (or `[]` if none)
+      – `"continue_next_page"` set to `true` or `false` depending on whether more pages remain
