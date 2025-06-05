@@ -36,11 +36,12 @@ class PDFProcessor(CallableComponent):
         Returns:
             list of tuples: Each tuple contains the page number (int) and the file path (str) to the saved image.
         """
+        pdf_name = os.path.splitext(os.path.basename(pdf_path))[0]
         # Open the PDF
         doc = fitz.open(pdf_path)
         images = []
         # Create a unique temporary directory using uuid
-        tmp_dir = os.path.join("./tmp", str(uuid.uuid4()))
+        tmp_dir = os.path.join("./tmp", pdf_name)
         os.makedirs(tmp_dir, exist_ok=True)
 
         self.logger.info(f"total number of pages in PDF: {len(doc)}")
