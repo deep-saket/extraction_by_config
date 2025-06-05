@@ -6,6 +6,7 @@ import json
 from typing import Any, Dict
 from common import CallableComponent
 from extraction_io.ExtractionItems import ExtractionItem  # adjust import path if needed
+from config.loader import prompts
 
 
 class PromptBuilder(CallableComponent):
@@ -26,19 +27,13 @@ class PromptBuilder(CallableComponent):
     _templates: Dict[str, Any] = None
     _detail: Dict[str, Any] = None
 
-    def __init__(self, template_path: str = "config/prompts.yml"):
+    def __init__(self):
         super().__init__()
         if PromptBuilder._templates is None:
-            full_path = os.path.join(self.project_root, template_path)
-            PromptBuilder._load_templates(full_path)
+            PromptBuilder._load_templates()
 
     @classmethod
-    def _load_templates(cls, path: str):
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"Could not find prompts.yml at: {path}")
-        with open(path, "r") as f:
-            data = yaml.safe_load(f)
-
+    def _load_templates(cls,):
         # Ensure required top-level keys
         required = {
             "instructions_detail",
@@ -48,12 +43,12 @@ class PromptBuilder(CallableComponent):
             "fallback",
             "instructions",
         }
-        missing = required - data.keys()
+        missing = required - prompts.keys()
         if missing:
             raise ValueError(f"prompts.yml missing top-level keys: {missing}")
 
         # Validate instructions_detail
-        detail = data["instructions_detail"]
+        detail = prompts["instructions_detail"]
         if not isinstance(detail, dict):
             raise ValueError("`instructions_detail` must be a dictionary")
         for group in ("boolean", "list", "option"):
@@ -63,7 +58,7 @@ class PromptBuilder(CallableComponent):
             raise ValueError("instructions_detail.option must contain 'scope' key")
 
         # All good → store both templates and detail metadata
-        cls._templates = data
+        cls._templates = prompts
         cls._detail = detail
 
     def build(

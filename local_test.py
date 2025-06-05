@@ -3,16 +3,14 @@ import json
 from src import Parser
 
 class LocalTest:
-    def __init__(self, config_path, local_test_config):
+    def __init__(self, local_test_config):
         """
         Initializes the LocalTest with the configuration file path.
 
         Args:
             config_path (str): Path to the YAML configuration file.
         """
-        self.config_path = config_path
-        self.config = self._load_config(config_path)
-        self.parser = Parser(self.config_path)
+        self.parser = Parser()
         self.local_test_config = self._load_config(local_test_config)
 
     def _load_config(self, config_path):
@@ -60,7 +58,6 @@ class LocalTest:
         print(f"Extraction complete. Data saved to {output_json_path}.")
 
 if __name__ == "__main__":
-    config_path = "config/settings.yml"
     local_test_config = "./local_test_params.yml"
-    local_test = LocalTest(config_path, local_test_config)
+    local_test = LocalTest(local_test_config)
     local_test.run()

@@ -11,6 +11,7 @@ from common import ExtractionState, BaseComponent
 from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
 from src.helper import PromptBuilder, VLMProcessor, PageFinder
+from config.loader import settings
 
 load_dotenv()
 
@@ -29,32 +30,29 @@ class Parser(BaseComponent):
       6) After all items are processed, wrap state entries in ExtractionOutputs and write JSON.
     """
 
-    def __init__(
-            self,
-            config_path: str = "config/settings.yml",
-            device: torch.device = torch.device("mps"),
-            vlm_candidate: str = "QwenV25Infer",
-            embedding_candidate: str = "ColPaliInfer",
-    ):
-        """
-        Constructor:
-          - Call BaseComponent.__init__(config_path) to set up logger + config.
-          - Load model configuration and initialize Qwen + ColPali via ModelManager.
-          - Instantiate PDFProcessor.
-          - Instantiate PromptBuilder, VLMProcessor, PageFinder exactly once.
-        """
-        super().__init__(config_path)
+    def __init__(self, *args, **kwargs):
 
+        # ---------------------------------------------------------------------
+        # Pull parser settings from the already‐loaded settings dict
+        # ---------------------------------------------------------------------
+        parser_cfg = settings.get("parser", {}).get("args", {})
+        self.device = torch.device(parser_cfg.get("device", "cpu"))
+        self.models = parser_cfg.get("models", [])
+        self.vlm_candidate = parser_cfg.get("vlm_candidate", "QwenV25Infer")
+        self.embedding_candidate = parser_cfg.get("embedding_candidate", "ColPaliInfer")
+
+
+        super().__init__(parser_cfg)
+        
         # 1) Load and initialize models
-        ModelManager.load_config(config_path)
-        ModelManager.initialize_models(device, model_classes=[vlm_candidate, embedding_candidate])
+        ModelManager.initialize_models(self.device, model_classes=self.models)
 
         # 2) Instantiate PDFProcessor with the shared ColPaliInfer
-        self.pdf_processor = PDFProcessor(getattr(ModelManager, embedding_candidate))
+        self.pdf_processor = PDFProcessor(getattr(ModelManager, self.embedding_candidate))
 
         # 3) Dynamically import and instantiate helper components now that ModelManager is ready
         self.prompt_builder = PromptBuilder()
-        self.vlm_processor = VLMProcessor(getattr(ModelManager, vlm_candidate))
+        self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate))
         self.page_finder = PageFinder(self.pdf_processor)
 
     def perform_de(

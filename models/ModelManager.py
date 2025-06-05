@@ -1,8 +1,7 @@
-import yaml
 import torch
 import importlib
 from common import BaseComponent
-
+from config.loader import settings
 
 class ModelManager(BaseComponent):
     """
@@ -16,19 +15,7 @@ class ModelManager(BaseComponent):
       - <ClassName>_api_endpoint
       - <ClassName>_api_token
     """
-    config = None
-
-    @classmethod
-    def load_config(cls, config_path: str):
-        """
-        Load YAML configuration. Expected keys include:
-          model_loading: "local" or "api"
-          <ClassName>_model_name_or_url: string
-          <ClassName>_api_endpoint: string
-          <ClassName>_api_token: string
-        """
-        with open(config_path, "r") as f:
-            cls.config = yaml.safe_load(f)
+    config = settings.get("model_manager", {})
 
     @classmethod
     def initialize_models(
@@ -80,23 +67,20 @@ class ModelManager(BaseComponent):
 
             # 4) Instantiate based on loading mode
             if model_loading == "local":
-                config_key = f"{class_name}_model_name_or_url"
-                if config_key not in cls.config:
-                    raise KeyError(f"Expected config key '{config_key}' for local loading of '{class_name}'")
-                model_name = cls.config[config_key]
+                if class_name not in cls.config['models']:
+                    raise KeyError(f"Expected config key '{class_name}' for local loading of '{class_name}'")
+                model_name = cls.config['models'][class_name]["model_name_or_url"]
                 try:
-                    instance = ModelClass(model_name=model_name, device=device)
+                    instance = ModelClass(model_name=model_name, device=device if device else torch.device(cls.config['models'][class_name].get("device", "cpu")))
                 except Exception as e:
                     cls.logger.exception(f"Error instantiating {class_name}(model_name={model_name}, device={device})")
                     raise RuntimeError(f"Error instantiating {class_name}(model_name={model_name}, device={device})") from e
 
             else:  # model_loading == "api"
-                endpoint_key = f"{class_name}_api_endpoint"
-                token_key    = f"{class_name}_api_token"
-                if endpoint_key not in cls.config or token_key not in cls.config:
-                    raise KeyError(f"Expected '{endpoint_key}' and '{token_key}' in config for API loading of '{class_name}'")
-                api_endpoint = cls.config[endpoint_key]
-                api_token    = cls.config[token_key]
+                api_endpoint = cls.config['models'][class_name].get("api_endpoint")
+                api_token    = cls.config['models'][class_name].get("api_token")
+                if api_token  or api_endpoint:
+                    raise KeyError(f"Expected 'api_endpoint and 'api_token' in config for API loading of '{class_name}'")
                 try:
                     instance = ModelClass(api_endpoint=api_endpoint, api_token=api_token)
                 except Exception as e:
