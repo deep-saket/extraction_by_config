@@ -14,12 +14,13 @@ class PDFProcessor(CallableComponent):
     generates embeddings for those images using the ColPali model, and retrieves the most 
     relevant pages based on a text query.
     """
-    def __init__(self, colpali_infer):
+    def __init__(self, colpali_infer, override=False):
         """
         Initializes the PDFProcessor by creating an instance of ColPaliInfer.
         """
         super().__init__()
         self.colpali_infer = colpali_infer
+        self.override = override
 
     def __call__(self, pdf_path: str):
         # populate state
@@ -40,12 +41,18 @@ class PDFProcessor(CallableComponent):
         # Open the PDF
         doc = fitz.open(pdf_path)
         images = []
-        # Create a unique temporary directory using uuid
-        tmp_dir = os.path.join("./tmp", pdf_name)
-        os.makedirs(tmp_dir, exist_ok=True)
 
         self.logger.info(f"total number of pages in PDF: {len(doc)}")
-        
+        # Create a unique temporary directory using uuid
+        tmp_dir = os.path.join("./tmp", pdf_name)
+
+        if not self.override and os.path.exists(tmp_dir):
+            for page_num, page in enumerate(doc):
+                file_path = os.path.join(tmp_dir, f"page_{page_num + 1}.png")
+                images.append((page_num + 1, file_path))
+            return images
+
+        os.makedirs(tmp_dir, exist_ok=True)
         # Process each page in the PDF
         for page_num in range(len(doc)):
             page = doc.load_page(page_num)
@@ -70,11 +77,26 @@ class PDFProcessor(CallableComponent):
             # Open the image file
             image = Image.open(image_path).convert("RGB")
             # Get the image embedding using ColPaliInfer
+            if not self.override:
+                pickle_path = image_path.replace('.png', '.pkl')
+                if os.path.exists(pickle_path):
+                    with open(pickle_path, 'rb') as f:
+                        embedding = torch.load(f)
+                    embeddings.append((page_num, embedding.cpu()))
+                    continue
+
             embedding = self.colpali_infer.get_image_embedding(image)
             # If embedding has shape (1, embed_dim), squeeze to (embed_dim,)
             if embedding.dim() == 2 and embedding.shape[0] == 1:
                 embedding = embedding.squeeze(0)
+
+            # Save embedding as pickle file
+            pickle_path = image_path.replace('.png', '.pkl')
+            with open(pickle_path, 'wb') as f:
+                torch.save(embedding, f)
+
             embeddings.append((page_num, embedding.cpu()))
+
         return embeddings
 
     def retrieve_relevant_pages(self, embeddings, query, top_k=3):

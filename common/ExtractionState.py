@@ -4,10 +4,11 @@ from typing import List, Tuple, Any, Union
 import torch
 from extraction_io.ExtractionOutputs import ExtractionOutput
 from extraction_io.ExtractionItems import ExtractionItems
+from common.BaseComponent import BaseComponent
 
 
 @dataclass
-class ExtractionState:
+class ExtractionState(BaseComponent):
     """
     Holds global images, embeddings, and extraction entries state for a document extraction cycle.
     Uses class variables to maintain state.
