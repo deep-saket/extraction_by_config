@@ -1,11 +1,10 @@
-# models/model_manager.py
-
 import yaml
 import torch
 import importlib
+from common import BaseComponent
 
 
-class ModelManager:
+class ModelManager(BaseComponent):
     """
     Dynamically load and instantiate model classes given their class-name strings.
     All models respect a global `model_loading` setting from config:
@@ -88,6 +87,7 @@ class ModelManager:
                 try:
                     instance = ModelClass(model_name=model_name, device=device)
                 except Exception as e:
+                    cls.logger.exception(f"Error instantiating {class_name}(model_name={model_name}, device={device})")
                     raise RuntimeError(f"Error instantiating {class_name}(model_name={model_name}, device={device})") from e
 
             else:  # model_loading == "api"
