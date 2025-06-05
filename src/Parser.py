@@ -3,6 +3,7 @@
 import importlib
 from typing import Union, List, Type, Any
 import torch
+from dotenv import load_dotenv
 
 from vector_retrieve import PDFProcessor
 from models import ModelManager
@@ -11,6 +12,7 @@ from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
 from src.helper import PromptBuilder, VLMProcessor, PageFinder
 
+load_dotenv()
 
 class Parser(BaseComponent):
     """

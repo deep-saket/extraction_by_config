@@ -3,7 +3,7 @@ import json
 from src import Parser
 
 class LocalTest:
-    def __init__(self, config_path):
+    def __init__(self, config_path, local_test_config):
         """
         Initializes the LocalTest with the configuration file path.
 
@@ -11,17 +11,18 @@ class LocalTest:
             config_path (str): Path to the YAML configuration file.
         """
         self.config_path = config_path
-        self.config = self._load_config()
+        self.config = self._load_config(config_path)
         self.parser = Parser(self.config_path)
+        self.local_test_config = self._load_config(local_test_config)
 
-    def _load_config(self):
+    def _load_config(self, config_path):
         """
         Loads the configuration from the YAML file.
 
         Returns:
             dict: Configuration parameters.
         """
-        with open(self.config_path, 'r') as file:
+        with open(config_path, 'r') as file:
             return yaml.safe_load(file)
 
     def run(self):
@@ -30,9 +31,9 @@ class LocalTest:
         """
 
         # Extract configuration parameters
-        pdf_path = self.config.get('pdf_path')
-        output_json_path = self.config.get('output_json_path')
-        extraction_config_path = self.config.get('extraction_config_path')
+        pdf_path = self.local_test_config.get('pdf_path')
+        output_json_path = self.local_test_config.get('output_json_path')
+        extraction_config_path = self.local_test_config.get('extraction_config_path')
 
         # Load extraction configuration
         with open(extraction_config_path, 'r') as file:
@@ -44,5 +45,6 @@ class LocalTest:
 
 if __name__ == "__main__":
     config_path = "config/settings.yml"
-    local_test = LocalTest(config_path)
+    local_test_config = "./local_test_params.yml"
+    local_test = LocalTest(config_path, local_test_config)
     local_test.run()

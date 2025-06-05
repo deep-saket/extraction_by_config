@@ -237,7 +237,71 @@ The final JSON (e.g., `output/my_document_extracted.json`) is an array of object
 
 ---
 
-## 9. License & Acknowledgments
+## 9. 🚀 Demo App
+
+This repository includes a Streamlit-powered **Document Extraction Config Dashboard** that enables users to:
+
+- View and edit existing DE config files
+- Add new DE extraction configs via a user-friendly UI
+- Upload PDF files and perform document extraction via a connected FastAPI backend
+- View extracted JSON outputs from processed documents
+
+### 🔧 Prerequisites
+
+- Python 3.8+
+- All dependencies installed via:
+
+```bash
+pip install -r requirements.txt
+```
+
+Make sure the following directory structure exists relative to the app:
+
+```
+.
+├── de_config/      # Store JSON config files here
+├── dataset/        # Uploaded PDFs are saved here
+├── output/         # Extraction results (JSON) will be saved here
+└── host/
+    ├── streamlit_app.py  # Streamlit dashboard entry point
+```
+
+---
+
+### ▶️ Running the App
+
+#### 1. Start the FastAPI backend
+
+```bash
+uvicorn host.api:app --reload --port 8001
+```
+
+Ensure the `perform_de` API is accessible at `http://localhost:8001/perform_de`.
+
+#### 2. Launch the Streamlit dashboard
+
+```bash
+streamlit run host/streamlit_app.py
+```
+
+---
+
+### 📁 Functional Tabs
+
+- **📂 Show All DE Configs**: Select, view, and edit existing field-level extraction rules
+- **📝 Add New DE Config**: Compose a new extraction config file from scratch
+- **🚀 Perform DE**: Upload a PDF, select a config, and trigger extraction via the API
+- **🧾 View Outputs**: Browse extracted JSON files from previous runs *(coming soon)*
+
+---
+
+### 🧠 Powered By
+
+- [Streamlit](https://streamlit.io/) for frontend UI
+- [FastAPI](https://fastapi.tiangolo.com/) for backend processing
+- Custom DE logic under `parser.perform_de(...)`
+
+## 10. License & Acknowledgments
 
 Licensed under your chosen open‐source license, 2025.  
 Built with:

@@ -18,3 +18,13 @@ fi
 
 echo "✅ PROJECT_ROOT set to: $PROJECT_ROOT"
 echo "✅ PYTHONPATH includes: $PYTHONPATH"
+
+# 4. Optionally write to .env file
+ENV_FILE="$PROJECT_ROOT/.env"
+
+# Add or update PROJECT_ROOT in .env
+grep -q '^PROJECT_ROOT=' "$ENV_FILE" && \
+  sed -i.bak "s|^PROJECT_ROOT=.*|PROJECT_ROOT=$PROJECT_ROOT|" "$ENV_FILE" || \
+  echo "PROJECT_ROOT=$PROJECT_ROOT" >> "$ENV_FILE"
+
+echo "✅ PROJECT_ROOT written to .env file at: $ENV_FILE"
