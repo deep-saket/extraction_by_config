@@ -1,4 +1,4 @@
 pdf_path: "dataset/1008.pdf"
 output_json_path: "output/1008.json"
-extraction_config_path: "de_config/1008.json"
+extraction_config_path: "de_config/1008_small.json"
 field_name: []

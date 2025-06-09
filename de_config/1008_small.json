@@ -58,5 +58,13 @@
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
+  },
+  {
+    "field_name": "SummaryDetails",
+    "description": "Summarise the fields",
+    "probable_pages": [],
+    "type": "summary",
+    "scope": "extraction_items",
+    "parent": ["SellerLoanNumber", "PropertyUsage"]
   }
 ]

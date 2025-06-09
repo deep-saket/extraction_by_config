@@ -193,7 +193,7 @@ elif st.session_state.mode == "add":
                 multipage_value=multipage,
                 multiline_value=multiline,
                 search_keys=search_keys,
-                extra_rules=extra_rules,
+                extra=extra_rules,
                 scope=scope,
                 section_name=section_name,
             ))

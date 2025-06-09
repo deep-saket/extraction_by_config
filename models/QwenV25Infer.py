@@ -5,6 +5,7 @@ from PIL import Image
 from io import BytesIO
 from huggingface_hub import InferenceClient
 from common import InferenceVLComponent
+from abc import abstractmethod
 
 
 class QwenV25Infer(InferenceVLComponent):
@@ -153,4 +154,36 @@ class QwenV25Infer(InferenceVLComponent):
         else:
             return {"error": "API request failed."}
 
+    def infer_lang(self, prompt: str = None) -> str:
+        """
+        Run inference using only text input.
+
+        Args:
+            prompt: Optional; textual prompt for language-based inference.
+
+        Returns:
+            str: The model's generated text response.
+        """
+        if not prompt or not isinstance(prompt, str):
+            raise ValueError("Prompt must be a non-empty string")
+
+        try:
+            if self.client:
+                response = self.client.text_generation(prompt)
+                return response if isinstance(response, str) else str(response)
+            elif self.model and self.processor:
+                inputs = self.processor(text=prompt, return_tensors="pt").to(self.device)
+                # Record how many tokens the prompt took:
+                prompt_len = inputs["input_ids"].shape[-1]
+
+                # Generate output
+                with torch.no_grad():
+                    generated_ids = self.model.generate(**inputs, max_new_tokens=50000)
+                generated_ids = generated_ids[:, prompt_len:]
+
+                return self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
+            else:
+                raise ValueError("Model and processor or API details must be properly initialized for inference.")
+        except Exception as e:
+            raise RuntimeError(f"Text inference failed: {str(e)}") from e
     

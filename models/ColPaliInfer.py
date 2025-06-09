@@ -104,3 +104,6 @@ class ColPaliInfer(InferenceVLComponent):
         result = json.dumps(emb_list)
         self.logger.debug("Inference result serialized to JSON")
         return result
+
+    def infer_lang(self, prompt: str = None) -> str:
+        pass

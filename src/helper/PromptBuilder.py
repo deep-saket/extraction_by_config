@@ -198,7 +198,7 @@ class PromptBuilder(CallableComponent):
             search_keys=", ".join(item.search_keys),
             section_name=item.section_name or "",
             probable_pages=item.probable_pages or [],
-            fields_to_summarize=item.extra_rules.get("fields_to_summarize", []),
+            fields_to_summarize=item.extra.get("fields_to_summarize", []),
         )
 
         full_prompt = system_part + "\n" + user_part
@@ -231,7 +231,7 @@ class PromptBuilder(CallableComponent):
             elif hasattr(item, var):
                 subs[var] = getattr(item, var)
             else:
-                subs[var] = item.extra_rules.get(var, "")
+                subs[var] = item.extra.get(var, "")
 
         # If the template references placeholders not in vars_list, fill them with ""
         try:

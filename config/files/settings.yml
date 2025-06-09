@@ -4,9 +4,11 @@ parser:
     device: mps
     vlm_candidate: QwenV25Infer
     embedding_candidate: ColPaliInfer
+    cb_candidate: YOLOCheckBox
     models:
       - QwenV25Infer
       - ColPaliInfer
+      - YOLOCheckBox
 
 model_manager:
   general:
@@ -19,5 +21,9 @@ model_manager:
       api_endpoint": ""
     ColPaliInfer:
       model_name_or_url: "vidore/colqwen2-v1.0"
+      device: mps
+      api_endpoint": ""
+    YOLOCheckBox:
+      model_name_or_url: "/Users/saketm10/Projects/extraction_by_config/local_models/yolo_checkbox.pt"
       device: mps
       api_endpoint": ""

@@ -1,5 +1,3 @@
-# extraction_io/extraction_config_models.py
-
 from pydantic import BaseModel, Field, RootModel, model_validator
 from typing import List, Optional, Literal, Dict, Any
 
@@ -17,9 +15,9 @@ class ExtractionItem(BaseModel):
         default_factory=list,
         description="(Optional) Explicit page numbers to prioritize (1-indexed)."
     )
-    type: Literal["key-value", "bullet-points", "summarization", "checkbox"] = Field(
+    type: Literal["key-value", "bullet-points", "summary", "checkbox"] = Field(
         ...,
-        description="Operation type: 'key-value', 'bullet-points', 'summarization', or 'checkbox'."
+        description="Operation type: 'key-value', 'bullet-points', 'summary', or 'checkbox'."
     )
     multipage_value: bool = Field(
         False,
@@ -29,10 +27,14 @@ class ExtractionItem(BaseModel):
         False,
         description="(Extraction only) Whether the value may contain multiple lines."
     )
-    extra_rules: Dict[str, Any] = Field(
+    parent: Optional[List[str]] = Field(
+        default_factory=list,
+        description="List of parent ExtractionItem field_names that must be processed before this item."
+    )
+    extra: Dict[str, Any] = Field(
         default_factory=dict,
         description=(
-            "Any additional rules. For summarization with scope='extracted_fields', "
+            "Any additional rules. For summary with scope='extraction_items', "
             "use extra_rules['fields_to_summarize'] = List[str]."
         )
     )
@@ -45,24 +47,24 @@ class ExtractionItem(BaseModel):
         )
     )
 
-    # Single "scope" field used for both summarization and checkbox types:
+    # Single "scope" field used for both summary and checkbox types:
     scope: Optional[
         Literal[
             "whole",
             "section",
             "pages",
-            "extracted_fields",
+            "extraction_items",
             "single_value",
             "multi_value"
         ]
     ] = Field(
         None,
         description=(
-            "When type=='summarization', valid values are:\n"
+            "When type=='summary', valid values are:\n"
             "  • 'whole'            = entire document\n"
             "  • 'section'          = a named section (requires section_name)\n"
             "  • 'pages'            = specific pages (uses probable_pages)\n"
-            "  • 'extracted_fields' = previously extracted fields (list in extra_rules['fields_to_summarize'])\n"
+            "  • 'extraction_items' = previously extracted fields (list in extra_rules['fields_to_summarize'])\n"
             "When type=='checkbox', valid values are:\n"
             "  • 'single_value'     = exactly one checkbox selected\n"
             "  • 'multi_value'      = zero or more checkboxes may be selected"
@@ -70,27 +72,27 @@ class ExtractionItem(BaseModel):
     )
     section_name: Optional[str] = Field(
         None,
-        description="(For scope='section', type='summarization') The heading/title of the section to locate."
+        description="(For scope='section', type='summary') The heading/title of the section to locate."
     )
 
     @model_validator(mode="after")
     def validate_scope_for_type(cls, item: "ExtractionItem") -> "ExtractionItem":
         """
         After the model is built, ensure:
-          - If type=='summarization', scope must be one of the four summarization options, and required fields exist.
+          - If type=='summary', scope must be one of the four summary options, and required fields exist.
           - If type=='checkbox', scope must be 'single_value' or 'multi_value'.
           - Otherwise (key-value or bullet-points) no scope is required/used.
         """
         typ = item.type
         scope = item.scope
-        extra = item.extra_rules or {}
+        extra = item.extra or {}
 
-        if typ == "summarization":
+        if typ == "summary":
             # 1) Must have a valid scope
-            if scope not in ("whole", "section", "pages", "extracted_fields"):
+            if scope not in ("whole", "section", "pages", "extraction_items"):
                 raise ValueError(
-                    "When type=='summarization', 'scope' must be one of "
-                    "['whole', 'section', 'pages', 'extracted_fields']."
+                    "When type=='summary', 'scope' must be one of "
+                    "['whole', 'section', 'pages', 'extraction_items']."
                 )
 
             # 2) If section, require section_name
@@ -103,14 +105,14 @@ class ExtractionItem(BaseModel):
                 if not item.probable_pages:
                     raise ValueError("When scope=='pages', 'probable_pages' must be a non-empty list.")
 
-            # 4) If extracted_fields, require extra_rules['fields_to_summarize']
-            if scope == "extracted_fields":
-                fields = extra.get("fields_to_summarize")
-                if not fields or not isinstance(fields, list):
+            # 4) If extraction_items, require extra_rules['fields_to_summarize']
+            if scope == "extraction_items":                
+                if not item.parent or not isinstance(item.parent, list):
                     raise ValueError(
-                        "When scope=='extracted_fields', extra_rules['fields_to_summarize'] "
+                        "When scope=='extraction_items', item.parent "
                         "must be a non-empty list of field_name strings."
                     )
+                item.extra["parent_processor"] = "ExtractionItemsSummariser"
 
         elif typ == "checkbox":
             # For checkbox, scope must be 'single_value' or 'multi_value'
@@ -122,7 +124,8 @@ class ExtractionItem(BaseModel):
         # For 'key-value' or 'bullet-points', we do not require scope to be set.
         return item
 
-    class Config:
+
+class Config:
         extra = "allow"
 
 
@@ -148,3 +151,35 @@ class ExtractionItems(RootModel[List[ExtractionItem]]):
             bool: True if at least one checkbox item exists, False otherwise.
         """
         return any(item.type == "checkbox" for item in self.root)
+
+    def sort_by_dependencies(self) -> None:
+
+        """
+        Sort extraction items based on parent dependencies.
+        Items with no parents come first, followed by items whose parents are already processed.
+        """
+        field_to_item = {item.field_name: item for item in self.root}
+        processed = set()
+        result = []
+
+        def process_item(item: ExtractionItem) -> None:
+            if item.field_name in processed:
+                return
+
+            # Process parents first
+            for parent in item.parent:
+                if parent not in field_to_item:
+                    raise ValueError(f"Parent item '{parent}' not found for '{item.field_name}'")
+                if parent not in processed:
+                    process_item(field_to_item[parent])
+
+            result.append(item)
+            processed.add(item.field_name)
+
+        # Process all items
+        for item in self.root:
+            process_item(item)
+
+        self.root = result
+        
+    

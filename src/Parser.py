@@ -10,7 +10,7 @@ from models import ModelManager
 from common import ExtractionState, BaseComponent
 from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
-from src.helper import PromptBuilder, VLMProcessor, PageFinder
+from src.helper import PromptBuilder, VLMProcessor, PageFinder, ParentProcessor, LMProcessor
 from config.loader import settings
 
 load_dotenv()
@@ -56,6 +56,8 @@ class Parser(BaseComponent):
         self.prompt_builder = PromptBuilder()
         self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate))
         self.page_finder = PageFinder(self.pdf_processor)
+        self.parent_processor = ParentProcessor()
+        self.lm_processor = LMProcessor(getattr(ModelManager, self.vlm_candidate))
 
     def _validate_extraction_items(self, extraction_items: Union[List[dict], ExtractionItems]) -> ExtractionItems:
         """
@@ -159,6 +161,9 @@ class Parser(BaseComponent):
             # 4) Gather raw data (list of dicts) by calling parser_instance.run(pages)
             raw_data = parser_instance(pages)
 
+            ## TODO process with parent items
+            raw_data = self.parent_processor(raw_data)
+
             # 5) Build and validate a Pydantic model
             extype = item.type  # e.g. "key-value" or "bullet-points"
             cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
@@ -205,6 +210,7 @@ class Parser(BaseComponent):
             parser_cls: Type = getattr(module, class_name)
         except (ModuleNotFoundError, AttributeError):
             # Fallback to ParseBase (which will error if no _process_page is defined)
+            self.logger.exception(f"Not able to instantiate parser for type '{extype}'. Using ParseBase instead.")
             from src.parsers.ParseBase import ParseBase
             parser_cls = ParseBase
 

@@ -2,9 +2,7 @@
 
 from typing import  Dict, Any, Optional
 from PIL import Image
-
-from common.generation_utils import parse_vlm_json
-from common.generation_models import SummaryGeneration
+from extraction_io.generation_utils import SummaryGeneration
 from src.parsers.ParseBase import ParseBase
 from common import ExtractionState
 
@@ -55,19 +53,18 @@ class ParseSummary(ParseBase):
         # Call the VLM to get raw output
         raw_output = self.vlm_processor(img, prompt, typ="summarization")
 
-        # Parse the raw_output into a SummaryGeneration model
-        try:
-            frag = parse_vlm_json(raw_output, SummaryGeneration)
-        except Exception as e:
-            # If parsing fails, treat this page as producing no new summary
-            return {
-                "summary": "",
-                "continue_next_page": False,
-                "page_number": page_num
-            }
+        if isinstance(raw_output, dict):
+            val = raw_output.get("value", "")
+            post = raw_output.get("post_processing_value", None)
+        elif hasattr(raw_output, "value"):
+            val = getattr(raw_output, "value", "")
+            post = getattr(raw_output, "post_processing_value", None)
+        else:
+            val = str(raw_output)
+            post = None
 
         return {
-            "summary": frag.summary,
-            "continue_next_page": frag.continue_next_page,
+            "value": val,
+            "post_processing_value": post,
             "page_number": page_num
         }

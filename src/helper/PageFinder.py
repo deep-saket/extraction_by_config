@@ -60,6 +60,10 @@ class PageFinder(CallableComponent):
                 "PageFinder requires both embeddings and a current extraction_item."
             )
 
+        ## if parent items are there, then consider only parent items for extraction
+        if extraction_item.parent:
+            return []
+
         if extraction_item.type == "checkbox" and ExtractionState.has_checkboxes():
             checkboxes = ExtractionState.get_checkboxes()
             if checkboxes:

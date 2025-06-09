@@ -66,7 +66,7 @@ class BulletPointsOutput(BaseModel):
 # 5) Final summary output model
 class SummaryOutput(BaseModel):
     field_name: str = Field(..., description="Logical field name or summary identifier")
-    summary: str = Field(..., description="The concatenated summary text")
+    value: str = Field(..., description="The concatenated summary text")
     key: str = Field(..., description="Literal search key used for extraction")
     page_range: Optional[List[int]] = Field(
         None, description="If summarizing specific pages, [start_page, end_page]"
@@ -77,7 +77,7 @@ class SummaryOutput(BaseModel):
 
     @model_validator(mode="after")
     def check_summary_nonempty(cls, values: Dict[str, Any]) -> "SummaryOutput":
-        if not values.get("summary"):
+        if not values.value:
             raise ValueError("Summary must be a non-empty string.")
         return values
 
@@ -127,7 +127,7 @@ class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
             elif isinstance(obj, BulletPointsOutput):
                 flat[obj.field_name] = [pt.value for pt in obj.value]
             elif isinstance(obj, SummaryOutput):
-                flat[obj.field_name] = obj.summary
+                flat[obj.field_name] = obj.value
             else:  # CheckboxOutput
                 # Represent each PointFragment as its dict (point_number, value, page_number, etc.)
                 flat[obj.field_name] = [pt.model_dump() for pt in obj.value]

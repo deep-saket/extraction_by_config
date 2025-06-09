@@ -1,3 +1,4 @@
 from extraction_io.result_builders.KeyValueResultBuilder import KeyValueResultBuilder
 from extraction_io.result_builders.BulletPointsResultBuilder import BulletPointsResultBuilder
 from extraction_io.result_builders.CheckboxResultBuilder import CheckboxResultBuilder
+from extraction_io.result_builders.SummaryResultBuilder import SummaryResultBuilder

@@ -2,7 +2,7 @@ from typing import List, Optional, Dict, Any
 from extraction_io.ExtractionOutputs import SummaryOutput
 
 
-class SummarizationResultBuilder:
+class SummaryResultBuilder:
     """
     Encapsulates assembling and validating a SummaryOutput.
     """
@@ -26,9 +26,11 @@ class SummarizationResultBuilder:
           page_range:     [start_page, end_page] or None.
           related_fields: list of extracted field names summarized, or None.
         """
+        summary = fragments.summary['summary']
         return SummaryOutput(
             field_name=field_name,
-            summary=fragments,
+            value=summary,
             page_range=page_range,
-            related_fields=related_fields
+            related_fields=related_fields,
+            key=""
         )
