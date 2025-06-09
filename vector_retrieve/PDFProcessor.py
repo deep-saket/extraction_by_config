@@ -1,5 +1,4 @@
 import os
-import uuid
 import fitz  # PyMuPDF
 from PIL import Image
 import torch
@@ -14,19 +13,45 @@ class PDFProcessor(CallableComponent):
     generates embeddings for those images using the ColPali model, and retrieves the most 
     relevant pages based on a text query.
     """
-    def __init__(self, colpali_infer, override=False):
+    def __init__(self, colpali_infer, checkbox_infer=None, override=False):
         """
         Initializes the PDFProcessor by creating an instance of ColPaliInfer.
         """
         super().__init__()
         self.colpali_infer = colpali_infer
         self.override = override
+        self.checkbox_infer = checkbox_infer
 
     def __call__(self, pdf_path: str):
         # populate state
         ExtractionState.images = self.pdf_to_images(pdf_path)
         ExtractionState.embeddings = self.generate_embeddings(ExtractionState.images)
+        if ExtractionState.extraction_items.has_checkbox_items():
+            ExtractionState.checkboxes = self.process_checkboxes(ExtractionState.images)
 
+    def process_checkboxes(self, images):
+        """
+        Process images to detect checkboxes if checkbox items are present in extraction items.
+        
+        Args:
+            images (list): List of tuples containing page number and image path
+            
+        Returns:
+            dict: Dictionary with page numbers as keys and checkbox details as values
+        """
+        checkboxes = {}
+        if self.checkbox_infer:
+            for page_num, image_path in images:
+                checkbox_list = self.checkbox_infer.infer(image_data=image_path)
+                if checkbox_list:
+                    checkboxes[page_num] = {
+                        'image_path': image_path,
+                        'checkbox_count': len(checkbox_list),
+                        'checkbox_data': checkbox_list,
+                    }
+        return checkboxes
+
+    
     def pdf_to_images(self, pdf_path):
         """
         Converts a PDF into a list of images, one per page, and saves them to a temporary directory.

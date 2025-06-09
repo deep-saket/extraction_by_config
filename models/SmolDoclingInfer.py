@@ -9,9 +9,9 @@ from huggingface_hub import InferenceClient
 from docling_core.types.doc.document import DocTagsDocument   # type: ignore
 from docling_core.types.doc import DoclingDocument             # type: ignore
 
-from common import InferenceComponent
+from common import InferenceVLComponent
 
-class SmolDoclingInfer(InferenceComponent):
+class SmolDoclingInfer(InferenceVLComponent):
     """
     SmolDocling-256M inference component (vision+text).
     """

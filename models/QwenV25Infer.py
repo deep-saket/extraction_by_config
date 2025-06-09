@@ -4,9 +4,10 @@ from qwen_vl_utils import process_vision_info
 from PIL import Image
 from io import BytesIO
 from huggingface_hub import InferenceClient
+from common import InferenceVLComponent
 
 
-class QwenV25Infer:
+class QwenV25Infer(InferenceVLComponent):
     """
     A class to perform inference using the Qwen2.5-VL model, either locally or via an API.
 
@@ -57,21 +58,31 @@ class QwenV25Infer:
         Performs inference on the provided image and prompt.
 
         Args:
-            image_data (bytes): The image data in bytes format.
+            image_data (Union[bytes, str, Image.Image]): The image data as bytes, file path, or PIL Image.
             prompt (str): The textual prompt for the model.
 
         Returns:
             str: The generated text from the model.
 
         Raises:
-            ValueError: If the model and processor or API details are not properly initialized.
+            ValueError: If the model and processor or API details are not properly initialized,
+                       or if input parameters are invalid.
         """
-        if self.client:
-            return self._infer_via_api(image_data, prompt)
-        elif self.model and self.processor:
-            return self._infer_locally(image_data, prompt)
-        else:
-            raise ValueError("Model and processor or API details must be properly initialized for inference.")
+        if not image_data:
+            raise ValueError("Image data cannot be None")
+        if not prompt or not isinstance(prompt, str):
+            raise ValueError("Prompt must be a non-empty string")
+
+        try:
+            if self.client:
+                response = self._infer_via_api(image_data, prompt)
+                return response if isinstance(response, str) else str(response)
+            elif self.model and self.processor:
+                return self._infer_locally(image_data, prompt)
+            else:
+                raise ValueError("Model and processor or API details must be properly initialized for inference.")
+        except Exception as e:
+            raise RuntimeError(f"Inference failed: {str(e)}") from e
 
     def _infer_locally(self, image_data, prompt):
         """
@@ -141,3 +152,5 @@ class QwenV25Infer:
             return response
         else:
             return {"error": "API request failed."}
+
+    

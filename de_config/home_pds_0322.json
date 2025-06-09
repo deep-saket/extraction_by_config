@@ -8,14 +8,6 @@
       "multiline_value": false
     },
     {
-      "field_name": "ContentsInsured",
-      "description": "List of items insured under 'Contents Insurance'",
-      "type": "bullet-points",
-      "probable_pages": [],
-      "multipage_value": false,
-      "multiline_value": true
-    },
-    {
       "field_name": "ContentsNotInsured",
       "description": "List of items not insured under Contents Insurance. ",
       "type": "bullet-points",

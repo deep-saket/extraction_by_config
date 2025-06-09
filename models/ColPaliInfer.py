@@ -2,11 +2,11 @@ import json
 import torch
 from transformers import PretrainedConfig
 from colpali_engine.models import ColQwen2, ColQwen2Processor
-from common import InferenceComponent
+from common import InferenceVLComponent
 from PIL import Image
 from io import BytesIO
 
-class ColPaliInfer(InferenceComponent):
+class ColPaliInfer(InferenceVLComponent):
     """
     Inference wrapper for ColQwen2 that ensures decoder_config is a proper config,
     and logs each step via the inherited logger.

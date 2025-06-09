@@ -110,5 +110,6 @@ pdf_images/
 .DS_Store
 Thumbs.db
 
-others
+output/others
 output
+local_models

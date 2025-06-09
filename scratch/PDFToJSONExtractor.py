@@ -172,7 +172,7 @@ class PDFSmolDoclingExtractor:
 if __name__ == "__main__":
     # ─── Hardcoded file paths ───────────────────────────────────────
     INPUT_PDF_PATH = "/Users/saketm10/Projects/extraction_by_config/dataset/home_pds_0322.pdf"
-    OUTPUT_JSON_PATH = "../others/output_file.json"
+    OUTPUT_JSON_PATH = "../output/others/output_file.json"
     # ────────────────────────────────────────────────────────────────────
 
     extractor = PDFSmolDoclingExtractor(

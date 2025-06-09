@@ -56,8 +56,8 @@ if st.session_state.mode == "view":
             with st.expander(f"✏️ Edit Entry #{i + 1} - `{item.field_name}`"):
                 item.field_name = st.text_input("Field Name", item.field_name, key=f"fn_{i}")
                 item.description = st.text_area("Description", item.description, key=f"desc_{i}")
-                item.type = st.selectbox("Type", ["key-value", "bullet-points", "summarization"],
-                                        index=["key-value", "bullet-points", "summarization"].index(item.type),
+                item.type = st.selectbox("Type", ["key-value", "bullet-points", "summarization", "checkbox"],
+                                        index=["key-value", "bullet-points", "summarization", "checkbox"].index(item.type),
                                         key=f"type_{i}")
                 pp_str = st.text_input("Probable Pages (comma-separated)",
                                        ", ".join(map(str, item.probable_pages or [])), key=f"pp_{i}")
@@ -161,11 +161,12 @@ elif st.session_state.mode == "add":
         with st.expander(f"➕ New Field #{i+1}"):
             field_name = st.text_input("Field Name", key=f"add_fn_{i}")
             description = st.text_area("Description", key=f"add_desc_{i}")
-            type_val = st.selectbox("Type", ["key-value", "bullet-points", "summarization"], key=f"add_type_{i}")
+            type_val = st.selectbox("Type", ["key-value", "bullet-points", "summarization", "checkbox"], key=f"add_type_{i}")
             probable_pages_str = st.text_input("Probable Pages (comma-separated)", key=f"add_pp_{i}")
             probable_pages = list(map(int, filter(None, probable_pages_str.split(",")))) if probable_pages_str else []
             multipage = st.checkbox("Multipage Value", key=f"add_mpv_{i}")
             multiline = st.checkbox("Multiline Value", key=f"add_mlv_{i}")
+            # scope one of 
             search_keys = st.text_area("Search Keys (one per line)", key=f"add_sk_{i}").splitlines()
             extra_rules_raw = st.text_area("Extra Rules (JSON)", "{}", key=f"add_extra_{i}")
             try:
@@ -180,6 +181,9 @@ elif st.session_state.mode == "add":
                                      key=f"add_scope_{i}")
                 if scope == "section":
                     section_name = st.text_input("Section Name", key=f"add_section_{i}")
+            if type_val == "checkbox":
+                scope = st.selectbox("Summarization Scope", ["single_value", "multi_value"],
+                                     key=f"add_scope_{i}")
 
             new_items.append(ExtractionItem(
                 field_name=field_name,

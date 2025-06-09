@@ -1,6 +1,6 @@
 # src/parsers/parse_summary.py
 
-from typing import List, Dict, Any, Optional
+from typing import  Dict, Any, Optional
 from PIL import Image
 
 from common.generation_utils import parse_vlm_json

@@ -1,0 +1,62 @@
+[
+  {
+    "field_name": "BorrowerName",
+    "description": "The full name of the primary borrower",
+    "probable_pages": [1],
+    "type": "key-value"
+  },
+  {
+    "field_name": "OccupancyStatus",
+    "description": "Occupancy status checkbox (Primary Residence / Second Home / Investment Property)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value"
+  },
+  {
+    "field_name": "PropertyUsage",
+    "description": "Property usage type (e.g., 1 unit, 2 units, etc.)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value"
+  },
+  {
+    "field_name": "LoanAmount",
+    "description": "Total loan amount",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "AppraisalCompanyName",
+    "description": "Name of the appraisal company",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "HomeownerInsurance",
+    "description": "Monthly homeowner's insurance amount",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "SellerContactName",
+    "description": "Seller’s contact name",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "SellerLoanNumber",
+    "description": "Seller’s loan number",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  }
+]

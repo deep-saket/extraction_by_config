@@ -131,9 +131,20 @@ class ExtractionItems(RootModel[List[ExtractionItem]]):
     RootModel whose entire payload is a list of ExtractionItem objects.
     """
     root: List[ExtractionItem]
+    
+    
 
     def __iter__(self):
         return iter(self.root)
 
     def __getitem__(self, idx: int) -> ExtractionItem:
         return self.root[idx]
+
+    def has_checkbox_items(self) -> bool:
+        """
+        Check if any ExtractionItem in the list has type 'checkbox'.
+
+        Returns:
+            bool: True if at least one checkbox item exists, False otherwise.
+        """
+        return any(item.type == "checkbox" for item in self.root)

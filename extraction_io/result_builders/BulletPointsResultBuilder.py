@@ -32,6 +32,9 @@ class BulletPointsResultBuilder:
         # 1) Build a list of BulletPoint instances
         bp_models = [PointFragment(value=b['value'], page_number=b['page_number'], index=b['point_number']) for b in fragments]
 
+        if not bp_models:
+            bp_models.append(PointFragment(value="", page_number=0, index=0))
+
         # 2) Construct and return a validated BulletPointsOutput model
         return BulletPointsOutput(
             field_name=field_name,

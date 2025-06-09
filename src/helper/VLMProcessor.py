@@ -1,7 +1,6 @@
 from common import CallableComponent
 import json
 from pydantic import ValidationError
-from extraction_io.generation_utils import KeyValueGeneration, BulletPointsGeneration
 from common import DirtyJsonParser
 
 

@@ -34,6 +34,9 @@ class ParseCheckbox(ParseBase):
              "page_number": <int>
            }
         """
+        if page_num not in ExtractionState.get_checkboxes():
+            return None
+
         # Find the matching image path
         image_path = None
         for (num, path) in ExtractionState.get_images():

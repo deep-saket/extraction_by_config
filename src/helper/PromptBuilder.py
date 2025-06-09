@@ -1,7 +1,5 @@
 # src/helper/prompt_builder.py
 
-import os
-import yaml
 import json
 from typing import Any, Dict
 from common import CallableComponent

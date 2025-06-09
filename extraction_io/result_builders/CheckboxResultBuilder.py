@@ -55,7 +55,9 @@ class CheckboxResultBuilder:
                 for o in f["selected_options"]:
                     gathered.append(PointFragment(value=o, page_number=f["page_number"], index=idx))
                     idx += 1
-
+        
+        if not gathered:
+            gathered.append(PointFragment(value="", page_number=0, index=0))
 
         return CheckboxOutput(
             field_name=field_name,

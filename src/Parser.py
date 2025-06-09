@@ -40,6 +40,7 @@ class Parser(BaseComponent):
         self.models = parser_cfg.get("models", [])
         self.vlm_candidate = parser_cfg.get("vlm_candidate", "QwenV25Infer")
         self.embedding_candidate = parser_cfg.get("embedding_candidate", "ColPaliInfer")
+        self.cb_candidate = parser_cfg.get("cb_candidate")
 
 
         super().__init__(parser_cfg)
@@ -48,12 +49,28 @@ class Parser(BaseComponent):
         ModelManager.initialize_models(self.device, model_classes=self.models)
 
         # 2) Instantiate PDFProcessor with the shared ColPaliInfer
-        self.pdf_processor = PDFProcessor(getattr(ModelManager, self.embedding_candidate))
+        self.pdf_processor = PDFProcessor(getattr(ModelManager, self.embedding_candidate),
+                                          getattr(ModelManager, self.cb_candidate))
 
         # 3) Dynamically import and instantiate helper components now that ModelManager is ready
         self.prompt_builder = PromptBuilder()
         self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate))
         self.page_finder = PageFinder(self.pdf_processor)
+
+    def _validate_extraction_items(self, extraction_items: Union[List[dict], ExtractionItems]) -> ExtractionItems:
+        """
+        Validate extraction items and convert to ExtractionItems if needed.
+
+        Args:
+            extraction_items: Raw extraction items data or ExtractionItems instance
+
+        Returns:
+            ExtractionItems: Validated extraction items
+        """
+        if not isinstance(extraction_items, ExtractionItems):
+            extraction_items = ExtractionItems.model_validate(extraction_items)
+            
+        return extraction_items
 
     def perform_de(
             self,
@@ -73,9 +90,8 @@ class Parser(BaseComponent):
           6) Wrap all entries in ExtractionOutputs and write JSON to output_json_path.
           7) Return the ExtractionOutputs Pydantic object.
         """
-        # 1) Validate `extraction_items`
-        if not isinstance(extraction_items, ExtractionItems):
-            extraction_items = ExtractionItems.model_validate(extraction_items)
+        # 1) Validate `extraction_items` 
+        extraction_items = self._validate_extraction_items(extraction_items)
 
         self.logger.info("Resetting parser state...")
         self._reset_state()
@@ -91,6 +107,8 @@ class Parser(BaseComponent):
 
         self.logger.info("Writing final JSON output...")
         return self._write_output(output_json_path)
+    
+    
 
     def _reset_state(self):
         """

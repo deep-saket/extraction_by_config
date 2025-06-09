@@ -34,6 +34,7 @@ class PageFinder(CallableComponent):
             query = f"{extraction_item.field_name}: {extraction_item.description}"
             self.logger.info(f"[PageFinder] Using default embedding query: '{query}'")
 
+        
         # Use PDFProcessor to retrieve the most relevant pages
         return self.pdf_processor.retrieve_relevant_pages(embeddings, query)
 
@@ -58,5 +59,10 @@ class PageFinder(CallableComponent):
             raise ValueError(
                 "PageFinder requires both embeddings and a current extraction_item."
             )
+
+        if extraction_item.type == "checkbox" and ExtractionState.has_checkboxes():
+            checkboxes = ExtractionState.get_checkboxes()
+            if checkboxes:
+                embeddings = [(page, emb) for page, emb in embeddings if page in checkboxes]
 
         return self.retrieve_pages(embeddings, extraction_item)
