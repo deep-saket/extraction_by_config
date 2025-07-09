@@ -36,6 +36,7 @@ class LMProcessor(CallableComponent):
         # Attempt to parse as JSON string
             parsed = DirtyJsonParser.parse(raw_output)
         except json.JSONDecodeError as e:
+            self.logger.exception(f"VLM did not return valid JSON: {raw_output}")
             raise RuntimeError(f"VLM did not return valid JSON: {raw_output!r}") from e
 
         # Validate against the appropriate generation model

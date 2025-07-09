@@ -69,10 +69,10 @@ if st.session_state.mode == "view":
                 item.multiline_value = st.checkbox("Multiline Value", item.multiline_value, key=f"mlv_{i}")
                 item.search_keys = st.text_area("Search Keys (one per line)",
                                                "\n".join(item.search_keys or []), key=f"sk_{i}").splitlines()
-                raw_extra = st.text_area("Extra Rules (JSON format)", json.dumps(item.extra_rules, indent=2),
+                raw_extra = st.text_area("Extra Rules (JSON format)", json.dumps(item.extra, indent=2),
                                         key=f"extra_{i}")
                 try:
-                    item.extra_rules = json.loads(raw_extra)
+                    item.extra = json.loads(raw_extra)
                 except:
                     st.error("Invalid JSON in Extra Rules")
                 if item.type == "summarization":

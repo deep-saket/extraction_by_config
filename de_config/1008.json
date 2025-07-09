@@ -1,255 +1,103 @@
 [
   {
-    "field_name": "BorrowerName",
-    "description": "The full name of the primary borrower",
-    "probable_pages": [1],
-    "type": "key-value"
-  },
-  {
-    "field_name": "OccupancyStatus",
-    "description": "Occupancy status checkbox (Primary Residence / Second Home / Investment Property)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "SalesPrice",
-    "description": "Sales Price value",
-    "probable_pages": [1],
-    "type": "key-value"
-  },
-  {
-    "field_name": "TotalNumberOfBorrowers",
-    "description": "Total number of borrowers",
-    "probable_pages": [1],
-    "type": "key-value"
-  },
-  {
-    "field_name": "AppraisedValue",
-    "description": "Appraised value of the property",
-    "probable_pages": [1],
-    "type": "key-value"
-  },
-  {
-    "field_name": "PropertyAddress",
-    "description": "Full address of the property",
-    "probable_pages": [1],
-    "type": "key-value"
-  },
-  {
-    "field_name": "PropertyUsage",
-    "description": "Property usage type (e.g., 1 unit, 2 units, etc.)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "ProjectName",
-    "description": "Name of the condo/co-op project (if applicable)",
+    "field_name": "PolicyNumber",
+    "description": "Policy No.",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
   },
   {
-    "field_name": "LoanType",
-    "description": "Type of loan (e.g., Conventional, FHA, VA, etc.)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "AmortizationType",
-    "description": "Amortization type (Fixed-Rate monthly/biweekly, ARM, Balloon, etc.)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "LoanPurpose",
-    "description": "Purpose of loan (Purchase, Refinance, etc.)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "LienPosition",
-    "description": "Lien position (First Mortgage, Second Mortgage, etc.)",
-    "probable_pages": [1],
-    "type": "checkbox",
-    "scope": "single_value"
-  },
-  {
-    "field_name": "LoanAmount",
-    "description": "Total loan amount",
+    "field_name": "CertificateNumber",
+    "description": "Certificate No.",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
   },
   {
-    "field_name": "NoteRate",
-    "description": "Note rate percentage",
+    "field_name": "CompanyTPAID",
+    "description": "Company / TPA ID No.",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
   },
   {
-    "field_name": "LoanTermMonths",
-    "description": "Loan term in months",
+    "field_name": "InsuredName",
+    "description": "Name of the insured",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
   },
   {
-    "field_name": "UnderwriterName",
-    "description": "Name of the underwriter",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "AppraiserNameLicense",
-    "description": "Appraiser’s name and license number",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "AppraisalCompanyName",
-    "description": "Name of the appraisal company",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "StableMonthlyIncome_Borrower1",
-    "description": "Stable Monthly Income for Borrower 1",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "StableMonthlyIncome_Borrower2",
-    "description": "Stable Monthly Income for Borrower 2",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "TotalBorrowerIncome",
-    "description": "Total borrower income",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "FirstMortgagePAndI",
-    "description": "Monthly P&I payment of first mortgage",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "SubordinateLienPAndI",
-    "description": "Monthly P&I for subordinate lien(s)",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "HomeownerInsurance",
-    "description": "Monthly homeowner's insurance amount",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "PropertyTaxes",
-    "description": "Monthly property taxes amount",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "MortgageInsurance",
-    "description": "Monthly mortgage insurance amount",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "OtherMonthlyPayments",
-    "description": "Other monthly payments used in DTI calculation",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "DebtToIncomeRatio",
-    "description": "Total obligations to income (DTI) percentage",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "SellerName",
-    "description": "Name of the seller",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "SellerContactName",
-    "description": "Seller’s contact name",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "SellerPhoneNumber",
-    "description": "Seller’s contact phone number",
-    "probable_pages": [1],
-    "type": "key-value",
-    "multipage_value": false,
-    "multiline_value": false
-  },
-  {
-    "field_name": "SellerAddress",
-    "description": "Seller’s mailing address",
+    "field_name": "InsuredAddress",
+    "description": "Address of the insured",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": true
   },
   {
-    "field_name": "InvestorLoanNumber",
-    "description": "Investor loan number",
+    "field_name": "HospitalisationReason",
+    "description": "Hospitalisation due to (Fitness / Injury / Maternity)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "DateOfAdmission",
+    "description": "Date of admission",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,
     "multiline_value": false
   },
   {
-    "field_name": "SellerLoanNumber",
-    "description": "Seller’s loan number",
+    "field_name": "TimeOfAdmission",
+    "description": "Time of admission",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "DateOfDischarge",
+    "description": "Date of discharge",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "TimeOfDischarge",
+    "description": "Time of discharge",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "InjuryCause",
+    "description": "If injury, cause (Self-inflicted / Road Traffic Accident / Substance Abuse / Alcohol Consumption)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "multi_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "MedicoLegalReported",
+    "description": "Is it medico-legal reported?",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "MLCReportPoliceLawsNumber",
+    "description": "MLC Report & Police Laws No.",
     "probable_pages": [1],
     "type": "key-value",
     "multipage_value": false,

@@ -172,7 +172,18 @@ class QwenV25Infer(InferenceVLComponent):
                 response = self.client.text_generation(prompt)
                 return response if isinstance(response, str) else str(response)
             elif self.model and self.processor:
-                inputs = self.processor(text=prompt, return_tensors="pt").to(self.device)
+                messages = [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": prompt}
+                        ]
+                    }
+                ]
+
+                text = self.processor.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+                inputs = self.processor(text=[text], return_tensors="pt").to(self.device)
+
                 # Record how many tokens the prompt took:
                 prompt_len = inputs["input_ids"].shape[-1]
 
