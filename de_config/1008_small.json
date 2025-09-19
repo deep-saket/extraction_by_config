@@ -10,7 +10,8 @@
     "description": "Occupancy status checkbox (Primary Residence / Second Home / Investment Property)",
     "probable_pages": [1],
     "type": "checkbox",
-    "scope": "single_value"
+    "scope": "single_value",
+    "option": ["", ""]
   },
   {
     "field_name": "PropertyUsage",

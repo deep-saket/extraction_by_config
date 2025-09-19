@@ -1,4 +1,4 @@
-pdf_path: "dataset/form2-2.pdf"
-output_json_path: "output/form2-2.json"
-extraction_config_path: "de_config/form2-2.json"
+pdf_path: "dataset/251849.pdf"
+output_json_path: "output/251849.json"
+extraction_config_path: "de_config/251849.json"
 field_name: []

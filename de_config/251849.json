@@ -1,0 +1,114 @@
+[
+  {
+    "field_name": "PolicyNumber",
+    "description": "Policy No.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "CertificateNumber",
+    "description": "Certificate No.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "CompanyTPAID",
+    "description": "Company / TPA ID No.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "InsuredName",
+    "description": "Name of the insured",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "InsuredAddress",
+    "description": "Address of the insured",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": true
+  },
+  {
+    "field_name": "HospitalisationReason",
+    "description": "Hospitalisation due to (Fitness / Injury / Maternity)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "DateOfAdmission",
+    "description": "Date of admission",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "TimeOfAdmission",
+    "description": "Time of admission",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "DateOfDischarge",
+    "description": "Date of discharge",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "TimeOfDischarge",
+    "description": "Time of discharge",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "InjuryCause",
+    "description": "If injury, cause (Self-inflicted / Road Traffic Accident / Substance Abuse / Alcohol Consumption)",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "multi_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "MedicoLegalReported",
+    "description": "Is it medico-legal reported?",
+    "probable_pages": [1],
+    "type": "checkbox",
+    "scope": "single_value",
+    "multipage_value": false
+  },
+  {
+    "field_name": "MLCReportPoliceLawsNumber",
+    "description": "MLC Report & Police Laws No.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": false
+  },
+  {
+    "field_name": "LegalDescription",
+    "description": "In Exhibit A page in Tract 1 legal descriotion is present, extract it",
+    "probable_pages": [],
+    "type": "key-value",
+    "multipage_value": false,
+    "multiline_value": true
+  }
+]

@@ -16,7 +16,7 @@ class SmolDoclingInfer(InferenceVLComponent):
     SmolDocling-256M inference component (vision+text).
     """
 
-    def __init__(self, config: dict = None):
+    def __init__(self, model_name="ds4sd/SmolDocling-256M-preview", config: dict = None):
         """
         config keys:
           - model_name (str, default "ds4sd/SmolDocling-256M-preview")
@@ -25,9 +25,8 @@ class SmolDoclingInfer(InferenceVLComponent):
           - device (str, optional, default "cuda")
         """
         super().__init__(config)
-        self.model_name = self.config.get(
-            "model_name", "ds4sd/SmolDocling-256M-preview"
-        )
+        self.model_name =  model_name
+
         self.api_endpoint = self.config.get("api_endpoint")
         self.api_token = self.config.get("api_token")
         self.device = self.config.get("device", "cuda")

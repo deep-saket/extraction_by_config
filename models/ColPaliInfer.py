@@ -1,7 +1,7 @@
 import json
 import torch
 from transformers import PretrainedConfig
-from colpali_engine.models import ColQwen2, ColQwen2Processor
+from colpali_engine.models import ColQwen2, ColQwen2Processor, ColPali, ColPaliProcessor
 from common import InferenceVLComponent
 from PIL import Image
 from io import BytesIO

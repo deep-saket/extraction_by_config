@@ -1,0 +1,42 @@
+[
+    {
+        "field_name": "OrderNumber",
+        "description": "The order number listed on the loan policy",
+        "probable_pages": [1],
+        "type": "key-value",
+        "key": "ORDER NUMBER",
+        "value_regex": "\\d{6}"
+    },
+    {
+        "field_name": "PolicyNumber",
+        "description": "The policy number listed on the loan policy",
+        "probable_pages": [1],
+        "type": "key-value",
+        "key": "POLICY NUMBER",
+        "value_regex": "[A-Z]{2}-\\d{4}-\\d{6}"
+    },
+    {
+        "field_name": "Address",
+        "description": "The property address",
+        "probable_pages": [1],
+        "type": "key-value",
+        "key": "Address",
+        "value_regex": ""
+    },
+    {
+        "field_name": "APN",
+        "description": "Assessor's Parcel Number",
+        "probable_pages": [1],
+        "type": "key-value",
+        "key": "Assessor's Parcel No.",
+        "value_regex": "\\d{3}-\\d{3}-\\d{3}"
+    },
+    {
+        "field_name": "EffectiveDate",
+        "description": "Effective date of the policy",
+        "probable_pages": [1],
+        "type": "key-value",
+        "key": "Effective Date",
+        "value_regex": ""
+    }
+]

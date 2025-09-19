@@ -73,7 +73,7 @@ class ModelManager(BaseComponent):
                 try:
                     instance = ModelClass(model_name=model_name, device=device if device else torch.device(cls.config['models'][class_name].get("device", "cpu")))
                 except Exception as e:
-                    cls.logger.exception(f"Error instantiating {class_name}(model_name={model_name}, device={device})")
+                    cls.logger.exception(f"Error instantiating {class_name}(model_name={model_name}, device={device}) | {e}")
                     raise RuntimeError(f"Error instantiating {class_name}(model_name={model_name}, device={device})") from e
 
             else:  # model_loading == "api"
