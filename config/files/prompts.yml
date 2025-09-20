@@ -92,6 +92,19 @@ user:
     {instruction}
     {postfix}
 
+  table: |
+    Extract the table relevant to the field "{field_name}" from the specified pages.
+    - Use the description to help you locate, identify, and disambiguate the correct table: "{description}".
+    - The description may specify where to find the table, what it contains, or how to identify it among multiple tables.
+    - Return the table as a list of rows, each row as a JSON object with column names as keys.
+    - Use the following columns if specified: {columns}.
+    - If the table spans multiple pages, merge them into a single result, but track the page number for each row.
+    - If no table is found, return an empty list.
+    - Only include rows that are relevant to the description: "{description}".
+    - Output format: JSON array of row objects, each with a page_number field.
+    {instruction}
+    {postfix}
+
 fallback: |
   Extract the field "{field_name}" (description: {description}) as {extraction_type}.
   Previous value: "{prev_value}"

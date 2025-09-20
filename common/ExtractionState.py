@@ -90,6 +90,17 @@ class ExtractionState(BaseComponent):
         return matches[0] if matches else None
 
     @classmethod
+    def get_response_by_field(cls, field_name: str):
+        """
+        Retrieve the output (ExtractionOutput) for a given field_name from response list.
+        Returns None if not found.
+        """
+        for entry in cls.response:
+            if hasattr(entry.root, 'field_name') and entry.root.field_name == field_name:
+                return entry.root
+        return None
+
+    @classmethod
     def get_extraction_items(cls):
         return cls.extraction_items
 

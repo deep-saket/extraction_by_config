@@ -137,11 +137,11 @@ class Parser(BaseComponent):
     def _process_all_items(self):
         """
         For each ExtractionItem in the user’s config:
-          1) Determine extype ("key-value" or "bullet-points").
+          1) Determine extype (e.g., "key-value", "table").
           2) Determine the list of pages: use `probable_pages` or call PageFinder on embeddings.
           3) Dynamically instantiate the correct Parse* class via _get_parser_for_type().
-          4) Call parser_instance.run(pages) to get raw fragment/bullet dicts.
-          5) Feed those raw fragments/bullets into the corresponding ResultBuilder (KeyValueResultBuilder or BulletPointsResultBuilder).
+          4) If the item has parents, retrieve their outputs and pass as parent_outputs to parser_instance.run.
+          5) Feed the result into the corresponding ResultBuilder.
           6) Validate final Pydantic model via ExtractionOutput.model_validate() and store it in state.
         """
         for idx, item in enumerate(ExtractionState.get_extraction_items()):
@@ -155,37 +155,38 @@ class Parser(BaseComponent):
                 # If no explicit probable_pages, use PageFinder to get top‐k pages
                 pages = self.page_finder()
 
-            # 3) Dynamically load and instantiate ParseKeyValue or ParseBulletPoints
+            extype = item.type
             parser_response_model = self._get_parser_generation_model(item)
             parser_instance = self._get_parser_for_type(item, parser_response_model)
-            # 4) Gather raw data (list of dicts) by calling parser_instance.run(pages)
-            raw_data = parser_instance(pages)
 
-            ## TODO process with parent items
+            # Parent tag logic
+            parent_outputs = None
+            if hasattr(item, 'parent') and item.parent:
+                parent_outputs = [ExtractionState.get_response_by_field(parent_name) for parent_name in item.parent]
+                # Remove None values if any parent not found
+                parent_outputs = [p for p in parent_outputs if p is not None]
+                self.logger.info(f"[Parser] Item '{item.field_name}' has parents: {item.parent}. Passing parent_outputs to parser.")
+
+            # Call parser with or without parent_outputs
+            if parent_outputs:
+                raw_data = parser_instance.run(pages, parent_outputs=parent_outputs)
+            else:
+                raw_data = parser_instance.run(pages)
+
             raw_data = self.parent_processor(raw_data)
-
-            # 5) Build and validate a Pydantic model
-            extype = item.type  # e.g. "key-value" or "bullet-points"
             cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
             builder_class_name = f"{cls_suffix}ResultBuilder"
             builder_module = importlib.import_module("extraction_io.result_builders")
             builder_cls: Type = getattr(builder_module, builder_class_name)
-
             kwargs = {
                 "field_name": item.field_name,
                 "key": item.description,
                 "fragments": raw_data,
                 "multipage": item.multipage_value
             }
-            # Call the builder
-            built_model = builder_cls.build(**kwargs)
-            # Always wrap in ExtractionOutput
-            model_obj = ExtractionOutput.model_validate(built_model.model_dump())
-
-            # 6) Add validated model to global state
+            result = builder_cls.build(**kwargs)
+            model_obj = ExtractionOutput.model_validate(result.model_dump())
             ExtractionState.add_response(model_obj)
-
-            # Debug: log extracted values or points
             root = model_obj.root
             self.logger.info(f"[Parser] Extracted value for '{item.field_name}': {root.value!r}")
 

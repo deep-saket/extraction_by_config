@@ -160,3 +160,14 @@ class PDFProcessor(CallableComponent):
         # Map indices back to the corresponding page numbers.
         relevant_pages = [embeddings[i][0] for i in top_indices]
         return relevant_pages
+
+    def get_page_image(self, page_num: int):
+        """
+        Retrieve the image path for a given 1-indexed page number from ExtractionState.images.
+        Returns the image path if found, else None.
+        """
+        for num, img_path in ExtractionState.images:
+            if num == page_num:
+                return img_path
+        return None
+

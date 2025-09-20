@@ -76,7 +76,7 @@ class SummaryOutput(BaseModel):
     )
 
     @model_validator(mode="after")
-    def check_summary_nonempty(cls, values: Dict[str, Any]) -> "SummaryOutput":
+    def check_summary_nonempty(cls, values: "SummaryOutput") -> "SummaryOutput":
         if not values.value:
             raise ValueError("Summary must be a non-empty string.")
         return values
@@ -102,12 +102,30 @@ class CheckboxOutput(BaseModel):
         return values
 
 
-# 7) Now define ExtractionOutput as a RootModel of the union
+# 7) Table row fragment model for multi-page table support
+class TableRowFragment(BaseModel):
+    row: Dict[str, Any] = Field(..., description="A single table row as a dict of column name to value")
+    page_number: int = Field(..., description="1-indexed page number where this row was found")
+    index: int = Field(..., description="Global index of this row across all pages")
+
+
+# 8) Table output model for structured table extraction results
+class TableOutput(BaseModel):
+    columns: List[str]
+    rows: List[TableRowFragment] = Field(..., description="List of table row fragments (multi-page supported)")
+    page_numbers: List[int] = []  # Optionally track which pages the table was extracted from
+    multipage_detail: Optional[List[TableRowFragment]] = Field(
+        None,
+        description="If present, details per page for multi-page tables. Each fragment shows the row, page, and index."
+    )
+
+
+# 9) Now define ExtractionOutput as a RootModel of the union
 class ExtractionOutput(RootModel[Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput]]):
     root: Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput]
 
 
-# 8) And define ExtractionOutputs as a RootModel of a list of ExtractionOutput
+# 10) And define ExtractionOutputs as a RootModel of a list of ExtractionOutput
 class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
     root: List[ExtractionOutput]
 

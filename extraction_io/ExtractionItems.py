@@ -15,9 +15,14 @@ class ExtractionItem(BaseModel):
         default_factory=list,
         description="(Optional) Explicit page numbers to prioritize (1-indexed)."
     )
-    type: Literal["key-value", "bullet-points", "summary", "checkbox"] = Field(
+    type: Literal["key-value", "bullet-points", "summary", "checkbox", "table"] = Field(
         ...,
-        description="Operation type: 'key-value', 'bullet-points', 'summary', or 'checkbox'."
+        description="Operation type: 'key-value', 'bullet-points', 'summary', 'checkbox', or 'table'."
+    )
+    ##TODO: Add validation that table_config is only used if type=='table'
+    table_config: Optional[Dict[str, Any]] = Field(
+        default_factory=dict,
+        description="Table-specific config: columns, header_row, etc. Only used if type='table'."
     )
     multipage_value: bool = Field(
         False,
@@ -181,5 +186,3 @@ class ExtractionItems(RootModel[List[ExtractionItem]]):
             process_item(item)
 
         self.root = result
-        
-    
