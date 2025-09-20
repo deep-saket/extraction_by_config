@@ -3,7 +3,7 @@
 summarise_extraction_items:
   prompt: |
     You are an expert summarizer.
-    Field to summarize: "{field_name}"
+    Field to summarize: "{field_name}" ## this value should not be modified in the output
     
     Raw content:
     """
@@ -11,7 +11,7 @@ summarise_extraction_items:
     """
     
     Context from related fields ({num_parents}):
-    {parent_lines}
+    {page_text}
     
     Please produce a single JSON object that conforms exactly to this schema:
     {schema}
@@ -20,7 +20,7 @@ summarise_extraction_items:
 
 summarise_section:
   prompt: |
-    Summarize the section titled "{section_name}" for field "{field_name}".
+    Summarize the section titled "{section_name}" for field "{field_name}". ## this value should not be modified in the output
     Use the following context:
     {section_text}
     
@@ -31,7 +31,7 @@ summarise_section:
 
 summarise_pages:
   prompt: |
-    Summarize the following pages for field "{field_name}": {pages}
+    Summarize the following pages for field. field_name ="{field_name}": pages = {pages} ## this value should not be modified in the output
     
     Page content:
     {page_text}
@@ -43,7 +43,7 @@ summarise_pages:
 
 summarise_whole:
   prompt: |
-    Summarize the entire document for field "{field_name}".
+    Summarize the entire document for field "{field_name}". ## this value should not be modified in the output
     
     Document content:
     {doc_text}

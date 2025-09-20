@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional
 
 from common import CallableComponent, ExtractionState
 from extraction_io.ExtractionItems import ExtractionItem
+from src.helper import ResultBuilderFactory
 
 class ParseBase(CallableComponent):
     """
@@ -36,6 +37,7 @@ class ParseBase(CallableComponent):
         self.prompt_builder = prompt_builder
         self.parser_response_model = parser_response_model
         self.parser_response_model_schema = parser_response_model.model_json_schema()
+        self.result_builder_factory = ResultBuilderFactory()
 
     def _choose_schema(self) -> Dict[str, Any]:
         """

@@ -120,9 +120,27 @@ class PromptBuilder(CallableComponent):
                 else:
                     instruction_parts.append(instr_tpl.format(search_keys=joined))
 
+        # --- Special handling for table.columns instruction: render columns via instruction fragment if present
+        if "columns" in combined_instr:
+            # Only render if table_config contains columns
+            try:
+                tbl_cfg = getattr(item, 'table_config', {}) or {}
+                cols = tbl_cfg.get('columns', []) if isinstance(tbl_cfg, dict) else []
+                if cols:
+                    cols_text = "\n".join([f"    - {c}" for c in cols])
+                    instr_obj = combined_instr.get('columns')
+                    if isinstance(instr_obj, dict):
+                        rendered_cols = self._render_from_dict(instr_obj, item, {"columns": cols_text})
+                        instruction_parts.append(rendered_cols)
+                    else:
+                        # fallback to simple format
+                        instruction_parts.append(instr_obj.format(columns=cols_text))
+            except Exception:
+                pass
+
         # 5.b) Single loop over every key in combined_instr
         for instr_key, instr_val in combined_instr.items():
-            if instr_key == "search_keys":
+            if instr_key == "search_keys" or instr_key == "columns":
                 continue
 
             # 5.b.i) If this key is treated as a boolean‐flag
@@ -155,7 +173,18 @@ class PromptBuilder(CallableComponent):
                         instruction_parts.append(instr_val)
                 continue
 
-            # 5.b.iv) Otherwise skip this instr_key
+            # 5.b.iv) If this is a type-specific instruction (e.g., table.header_row), append it.
+            # This ensures instructions defined under the type (like table.header_row or table.merge_adjacent)
+            # are included even if they aren't listed under the global boolean/option keys.
+            if instr_key in type_instr:
+                if isinstance(instr_val, dict):
+                    rendered = self._render_from_dict(instr_val, item, override_vars)
+                    instruction_parts.append(rendered)
+                else:
+                    instruction_parts.append(instr_val)
+                continue
+
+            # 5.b.v) Otherwise skip this instr_key
 
         # 5.c) If nothing got appended, fall back to generic "single" if it exists
         if not instruction_parts:
@@ -199,11 +228,11 @@ class PromptBuilder(CallableComponent):
             section_name=item.section_name or "",
             probable_pages=item.probable_pages or [],
             fields_to_summarize=item.extra.get("fields_to_summarize", []),
+            columns_section="",
         )
 
-        full_prompt = system_part + "\n" + user_part
-        self.logger.debug(f"Built prompt for '{item.field_name}':\n{full_prompt}")
-        return full_prompt
+        # 9) Combine
+        return system_part + "\n\n" + user_part
 
     def _render_from_dict(
         self,
@@ -247,3 +276,31 @@ class PromptBuilder(CallableComponent):
         **override_vars: Any,
     ) -> str:
         return self.build(item, schema_dict or {}, prev_value, **override_vars)
+
+    def load_summary_prompts(self, prompts_path=None):
+        """
+        Load summary prompts from summary_prompts.yml. If prompts_path is not provided, use default location.
+        """
+        import os, yaml
+        if prompts_path is None:
+            prompts_path = os.path.join(os.path.dirname(__file__), '../../config/files/summary_prompts.yml')
+        with open(prompts_path, 'r') as f:
+            self._summary_prompts = yaml.safe_load(f)
+
+    def get_summary_prompt(self, scope: str) -> str:
+        """
+        Get the summary prompt template for the given scope.
+        Scope must be one of: extraction_items, pages, section, whole.
+        """
+        if not hasattr(self, '_summary_prompts'):
+            self.load_summary_prompts()
+        scope_map = {
+            'extraction_items': 'summarise_extraction_items',
+            'pages': 'summarise_pages',
+            'section': 'summarise_section',
+            'whole': 'summarise_whole',
+        }
+        key = scope_map.get(scope)
+        if not key or key not in self._summary_prompts:
+            raise ValueError(f"No summary prompt found for scope '{scope}'")
+        return self._summary_prompts[key]['prompt']

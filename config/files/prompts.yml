@@ -104,8 +104,10 @@ user:
     - Use the description to help you locate, identify, and disambiguate the correct table: "{description}".
     - The description may specify where to find the table, what it contains, or how to identify it among multiple tables.
     - Return the table as a list of rows, each row as a JSON object with column names as keys.
-    - Use the following columns if specified: {columns}.
-    - If the table spans multiple pages, merge them into a single result, but track the page number for each row.
+    - If the table spans multiple pages, use the "continue_next_page" flag to indicate whether the table continues on the next page.
+    - Pass the "table_header" from the first page to subsequent pages for more accurate extraction if "continue_next_page" is True.
+    - Always merge adjacent text fragments that belong to the same cell (e.g., line-wrapped descriptions) into a single cell value.
+    - If search_keys are provided in the config, use them to locate the relevant section of the document.
     - If no table is found, return an empty list.
     - Only include rows that are relevant to the description: "{description}".
     - Output format: JSON array of row objects, each with a page_number field.
@@ -169,6 +171,20 @@ instructions:
         • If no bullets are found on a page, return `"points": []` and `"continue_next_page": false`.
         • **Note:** The bullets must follow the BulletPointsOutput schema injected by the system prompt.
 
+  table:
+    columns:
+      vars: ["columns"]
+      prompt: |
+        - Use the following columns if specified:
+        {columns}
+    header_row:
+      vars: []
+      prompt: |
+        • The table has a header row. If column names are not provided in the config, use the header row to infer column names.
+    merge_adjacent:
+      vars: []
+      prompt: |
+        • Merge adjacent text fragments that logically belong to the same cell (e.g., line-broken descriptions) when assembling row values.
   summary:
     whole:
       vars: []
@@ -193,14 +209,6 @@ instructions:
         • If any specified pages are missing or lack extractable text, ignore them and still summarize what remains.
         • If none of the specified pages yield content, set `"summary": ""`.
 
-    fields:
-      vars: ["fields_to_summarize"]
-      prompt: |
-        • Summarize the previously extracted fields listed under "fields_to_summarize": {fields_to_summarize}.
-        • Retrieve each field’s value (already extracted earlier) in the order provided, then concatenate those values.
-        • Create a unified, coherent summary that covers all these field contents without repeating text verbatim.
-        • If any field is missing or its extracted value is empty, omit it but still summarize remaining fields.
-        • If none of the specified fields exist or all are empty, set `"summary": ""`.
 
   checkbox:
     single_value:

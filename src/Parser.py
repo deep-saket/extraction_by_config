@@ -10,7 +10,7 @@ from models import ModelManager
 from common import ExtractionState, BaseComponent
 from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
-from src.helper import PromptBuilder, VLMProcessor, PageFinder, ParentProcessor, LMProcessor
+from src.helper import PromptBuilder, VLMProcessor, PageFinder, ParentProcessor, LMProcessor, ResultBuilderFactory
 from config.loader import settings
 
 load_dotenv()
@@ -58,6 +58,7 @@ class Parser(BaseComponent):
         self.page_finder = PageFinder(self.pdf_processor)
         self.parent_processor = ParentProcessor()
         self.lm_processor = LMProcessor(getattr(ModelManager, self.vlm_candidate))
+        self.result_builder_factory = ResultBuilderFactory()
 
     def _validate_extraction_items(self, extraction_items: Union[List[dict], ExtractionItems]) -> ExtractionItems:
         """
@@ -163,21 +164,9 @@ class Parser(BaseComponent):
             raw_data = parser_instance(pages)
 
             # Apply any generic parent_processor transformations
-            raw_data = self.parent_processor(raw_data)
+            # raw_data = self.parent_processor(raw_data)
 
-            cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
-            builder_class_name = f"{cls_suffix}ResultBuilder"
-            builder_module = importlib.import_module("extraction_io.result_builders")
-            builder_cls: Type = getattr(builder_module, builder_class_name)
-            kwargs = {
-                "field_name": item.field_name,
-                "key": item.description,
-                "fragments": raw_data,
-                "multipage": item.multipage_value
-            }
-            result = builder_cls.build(**kwargs)
-            model_obj = ExtractionOutput.model_validate(result.model_dump())
-            ExtractionState.add_response(model_obj)
+            model_obj = self.result_builder_factory(item, raw_data)
             root = model_obj.root
             self.logger.info(f"[Parser] Extracted value for '{item.field_name}': {root.value!r}")
 
@@ -230,7 +219,23 @@ class Parser(BaseComponent):
           e. Return the ExtractionOutputs instance.
         """
         all_models = ExtractionState.get_responses()
-        raw_list = [m.model_dump() for m in all_models]
+        # Do not remove interim entries from state; instead rely on Pydantic field config (exclude=True)
+        # to ensure the 'interim' flag does not appear in serialized output. As an extra safety, strip
+        # the key if present in the dumped dicts.
+        raw_list = []
+        for m in all_models:
+            if not isinstance(m, ExtractionOutput):
+                self.logger.warning(f"Skipping non-ExtractionOutput entry in state: {m!r}")
+                continue
+            if m._interim:
+                self.logger.info(f"Skipping interim ExtractionOutput for field '{m.root.field_name}'")
+                continue
+            dumped = m.model_dump()
+            # Some model_dump implementations may still include fields; ensure 'interim' is not present
+            if isinstance(dumped, dict) and '_interim' in dumped:
+                dumped = {k: v for k, v in dumped.items() if k != '_interim'}
+            raw_list.append(dumped)
+
         final_output = ExtractionOutputs.model_validate(raw_list)
 
         with open(output_json_path, "w") as f:

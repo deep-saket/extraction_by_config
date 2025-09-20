@@ -2,3 +2,4 @@ from extraction_io.generation_utils.BulletPointsGeneration import BulletPointsGe
 from extraction_io.generation_utils.KeyValueGeneration import KeyValueGeneration
 from extraction_io.generation_utils.SummaryGeneration import SummaryGeneration
 from extraction_io.generation_utils.CheckboxGeneration import CheckboxGeneration
+from extraction_io.generation_utils.TableGeneration import TableGeneration

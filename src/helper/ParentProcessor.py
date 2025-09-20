@@ -19,8 +19,9 @@ class ParentProcessor(CallableComponent):
             return raw_data
 
         parent_fields = []
-        for parent_name in extraction_item.parent:
-            parent_fields.append(ExtractionState.get_response_by_field_name(parent_name))
+        if not kwargs.get("skip_parents", False):
+            for parent_name in extraction_item.parent:
+                parent_fields.append(ExtractionState.get_response_by_field_name(parent_name))
 
         # Dynamically import this module
         module = importlib.import_module("src.parent_processors")

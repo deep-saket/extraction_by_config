@@ -37,7 +37,9 @@ class ExtractionState(BaseComponent):
         cls.current_extraction_item = cls.extraction_items[idx]
 
     @classmethod
-    def set_images(cls, imgs):
+    def set_images(cls, imgs: List[Tuple[int, str]]):
+        if not isinstance(imgs, list) or not all(isinstance(i, tuple) and len(i) == 2 for i in imgs):
+            raise ValueError("Invalid type for images. Expected List[Tuple[int, str]].")
         cls.images = imgs
 
     @classmethod
@@ -67,6 +69,14 @@ class ExtractionState(BaseComponent):
         return cls.images
 
     @classmethod
+    def get_image(cls, idx: int):
+        for (num, path) in cls.get_images():
+            if num == idx:
+                image_path = path
+                break
+        return image_path
+
+    @classmethod
     def get_embeddings(cls):
         return cls.embeddings
 
@@ -77,16 +87,10 @@ class ExtractionState(BaseComponent):
     
     @classmethod
     def get_response_by_field_name(cls, field_name: str) -> Any:
-        """
-        Get response item matching the given field name.
-
-        Args:
-            field_name: The field name to search for
-
-        Returns:
-            Matching response item or None if not found
-        """
-        matches = [r for r in cls.response if hasattr(r, 'root') and hasattr(r.root, 'field_name')  and r.root.field_name == field_name]
+        matches = [
+            r for r in cls.response
+            if hasattr(r, 'root') and hasattr(r.root, 'field_name') and isinstance(getattr(r.root, 'field_name', None), str) and r.root.field_name == field_name
+        ]
         return matches[0] if matches else None
 
     @classmethod
@@ -119,13 +123,19 @@ class ExtractionState(BaseComponent):
         Returns:
             Matching extraction item or None if not found
         """
-        matches = [item for item in cls.extraction_items if
-                   hasattr(item, 'field_name') and item.field_name == field_name]
+        matches = [
+            item for item in cls.extraction_items
+            if isinstance(item, dict) and 'field_name' in item and item['field_name'] == field_name
+        ]
         return matches[0] if matches else None
 
     @classmethod
     def get_current_extraction_item(cls):
-        return cls.current_extraction_item
+        if isinstance(cls.current_extraction_item, dict) and 'field_name' in cls.current_extraction_item:
+            return cls.current_extraction_item
+        elif hasattr(cls.current_extraction_item, 'field_name'):
+            return cls.current_extraction_item
+        return None
 
     @classmethod
     def set_checkboxes(cls, boxes: Dict[int, dict]):
@@ -143,3 +153,4 @@ class ExtractionState(BaseComponent):
             bool: True if there are checkboxes, False otherwise
         """
         return len(cls.checkboxes) > 0
+

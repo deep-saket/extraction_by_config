@@ -4,6 +4,9 @@ from extraction_io.generation_utils.SummaryGeneration import SummaryGeneration
 from common import ExtractionState
 from typing import List, Any
 from src.helper.ParentProcessor import ParentProcessor
+from src.parent_processors import ExtractionItemsSummariser
+import copy
+
 
 class ParseSummary(ParseBase):
     """
@@ -14,19 +17,33 @@ class ParseSummary(ParseBase):
     def __init__(self, item: ExtractionItem, vlm_processor, prompt_builder, parser_response_model):
         super().__init__(item, vlm_processor, prompt_builder, parser_response_model)
         self.parent_processor = ParentProcessor()
+        self.eis = ExtractionItemsSummariser()
 
     def _choose_schema(self):
         return self.parser_response_model_schema
 
-    def _process_page(self, page_num: int, prev_value: str) -> Any:
+    def _process_page(self, page_num: int, prev_value=None) -> Any:
         # For summaries we return a SummaryGeneration model for the page
-        image_path = self.vlm_processor.pdf_processor.get_page_image(page_num)
+        image_path = ExtractionState.get_image(page_num)
         if image_path is None:
             return None
         schema_dict = SummaryGeneration.model_json_schema()
-        prompt = self.prompt_builder.build(self.item, schema_dict=schema_dict, prev_value=prev_value)
-        gen = self.vlm_processor(image_path, prompt, SummaryGeneration)
-        return gen
+        #TODO prompt upliftment required
+        item_copy = copy.deepcopy(self.item)
+        item_copy.field_name = f"summary_{page_num}"
+        item_copy.probable_pages = [page_num]
+        prompt = self.prompt_builder.build(item_copy, schema_dict=schema_dict)
+        summ = self.vlm_processor(image_path, prompt, SummaryGeneration, item=item_copy)
+        self.result_builder_factory(item_copy, summ, interim=True)
+        return summ
+
+    def _process_pages(self, page_nums: List[int]) -> dict:
+        results = {}
+        for p in page_nums:
+            gen = self._process_page(p)
+            if gen is not None:
+                results[p] = gen
+        return results
 
     def run(self, pages: List[int]) -> SummaryGeneration:
         item = self.item
@@ -34,44 +51,59 @@ class ParseSummary(ParseBase):
 
         if scope == "extraction_items":
             # Gather parent outputs from ExtractionState and concatenate
-            parent_texts = []
+            parent_texts = {}
             for parent_name in item.parent:
                 resp = ExtractionState.get_response_by_field_name(parent_name)
                 if resp is not None:
                     # Convert parent response into text
                     text = self._parent_to_text(resp.root if hasattr(resp, 'root') else resp)
-                    parent_texts.append(text)
-            raw_concat = "\n\n".join(parent_texts)
+                    parent_texts[resp.root.field_name] = text
 
             # Delegate to ParentProcessor which will pick configured processor (e.g., ExtractionItemsSummariser)
-            result = self.parent_processor(raw_concat)
-            # ParentProcessor returns either transformed raw_data or a Pydantic model depending on processor
-            if isinstance(result, SummaryGeneration):
-                return result
-            # If processor returned a raw string or dict, wrap into SummaryGeneration
-            if isinstance(result, str):
-                return SummaryGeneration(field_name=item.field_name, summary=result, continue_next_page=False)
-            try:
-                # attempt to coerce dict
-                return SummaryGeneration.model_validate(result)
-            except Exception:
-                return SummaryGeneration(field_name=item.field_name, summary=str(result), continue_next_page=False)
+            result = self.parent_processor(parent_texts)
 
-        # For page-based scopes (whole/section/pages)
-        fragments: List[str] = []
-        prev_value = ""
-        for p in pages:
-            gen = self._process_page(p, prev_value)
-            if gen is None:
-                continue
-            frag_text = gen.summary if isinstance(gen.summary, str) else (gen.summary.get('summary') if isinstance(gen.summary, dict) else str(gen.summary))
-            fragments.append(frag_text)
-            prev_value = "\n".join(fragments)
-            if not getattr(gen, 'continue_next_page', False):
-                break
+        if scope == "whole":
+            pages = [img[0] for img in ExtractionState.get_images()]
+            summaries_detail = self._process_pages(pages)
 
-        final_summary = "\n\n".join(fragments).strip()
-        return SummaryGeneration(field_name=item.field_name, summary=final_summary, continue_next_page=False)
+            summaries = {}
+            for pg_num, summ in summaries_detail.items():
+                # Pass summaries to parent processor
+                summaries[pg_num] = summ.summary
+
+            if len(summaries) > 1:
+                result = self.eis(summaries)
+            else:
+                result = summaries[0]
+
+        # Handle scope == pages
+        if scope == "pages":
+            summaries_detail = self._process_pages(pages)
+            # Pass summaries to parent processor
+            summaries = {}
+            for pg_num, summ in summaries_detail.items():
+                # Pass summaries to parent processor
+                self.item.parent.append(summ.field_name)
+                summaries[pg_num] = summ.summary
+
+            if len(summaries) > 1:
+                result = self.eis(summaries)
+            else:
+                result = summaries_detail[0]
+
+        # Default behavior: process pages normally
+        # ParentProcessor returns either transformed raw_data or a Pydantic model depending on processor
+        if isinstance(result, SummaryGeneration):
+            return result
+        # If processor returned a raw string or dict, wrap into SummaryGeneration
+        if isinstance(result, str):
+            return SummaryGeneration(field_name=item.field_name, summary=result, continue_next_page=False)
+        try:
+            # attempt to coerce dict
+            return SummaryGeneration.model_validate(result)
+        except Exception:
+            return SummaryGeneration(field_name=item.field_name, summary=str(result), continue_next_page=False)
+
 
     def _parent_to_text(self, parent_obj: Any) -> str:
         if parent_obj is None:

@@ -19,10 +19,10 @@ class ExtractionItem(BaseModel):
         ...,
         description="Operation type: 'key-value', 'bullet-points', 'summary', 'checkbox', or 'table'."
     )
-    ##TODO: Add validation that table_config is only used if type=='table'
-    table_config: Optional[Dict[str, Any]] = Field(
-        default_factory=dict,
-        description="Table-specific config: columns, header_row, etc. Only used if type='table'."
+    # remove table_config; add table_header
+    table_header: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Optional list of column names/header names for table outputs. Only valid when type=='table'."
     )
     multipage_value: bool = Field(
         False,
@@ -84,6 +84,17 @@ class ExtractionItem(BaseModel):
     def validate_scope_for_type(cls, item: "ExtractionItem") -> "ExtractionItem":
         typ = item.type
         scope = item.scope
+        # Enforce table-specific rules
+        if typ == "table":
+            # Ensure multiline_value is always True for tables
+            item.multiline_value = True
+            # table_header can only be present if type == table; already true here
+        else:
+            # If not a table, table_header must be empty
+            if getattr(item, 'table_header', None):
+                if item.table_header:
+                    raise ValueError("'table_header' is only valid when type=='table'.")
+
         if typ == "summary":
             if scope not in ("whole", "section", "pages", "extraction_items"):
                 raise ValueError(
@@ -98,6 +109,10 @@ class ExtractionItem(BaseModel):
             # 4) If extraction_items, require non-empty parent
             if scope == "extraction_items" and (not item.parent or not isinstance(item.parent, list)):
                 raise ValueError("When scope=='extraction_items', 'parent' must be a non-empty list of field_name strings.")
+
+            if scope in ["extraction_items", "pages"]:
+                item.extra = {"parent_processor": "ExtractionItemsSummariser"}
+
         elif typ == "checkbox":
             if scope not in ("single_value", "multi_value"):
                 raise ValueError(

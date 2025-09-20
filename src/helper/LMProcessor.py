@@ -1,7 +1,7 @@
 from common import CallableComponent
 import json
 from pydantic import ValidationError
-from common import DirtyJsonParser
+from common import DirtyJsonParser, ExtractionState
 
 
 class LMProcessor(CallableComponent):
@@ -14,7 +14,7 @@ class LMProcessor(CallableComponent):
         self.lm_infer = lm_infer
 
 
-    def extract(self, prompt, generation_model):
+    def extract(self, prompt, generation_model, **kwargs):
         """
         Runs the LM inference with the given prompt, then parses the JSON and validates.
 
@@ -28,6 +28,8 @@ class LMProcessor(CallableComponent):
         Raises:
             RuntimeError if the LM output cannot be parsed or validated.
         """
+        item = kwargs.get('item') if kwargs.get('item') else ExtractionState.get_current_extraction_item()
+
         self.logger.info("Running LM inference...")
         raw_output = self.lm_infer.infer_lang(prompt)
         self.logger.info("Finished LM inference.")
@@ -41,9 +43,12 @@ class LMProcessor(CallableComponent):
 
         # Validate against the appropriate generation model
         try:
-            return generation_model.model_validate(parsed)
+            parsed = generation_model.model_validate(parsed)
+            if item:
+                parsed.field_name = item.field_name
+            return parsed
         except ValidationError as e:
             raise RuntimeError(f"VLM JSON failed schema validation: {e}") from e
 
     def __call__(self, prompt, generation_model, *args, **kwargs):
-        return self.extract(prompt, generation_model)
+        return self.extract(prompt, generation_model, **kwargs)
