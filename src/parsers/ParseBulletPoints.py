@@ -3,7 +3,6 @@
 from typing import List, Dict, Any
 from PIL import Image
 
-from extraction_io.generation_utils import BulletPointsGeneration
 from src.parsers.ParseBase import ParseBase
 from common import ExtractionState
 
@@ -16,7 +15,7 @@ class ParseBulletPoints(ParseBase):
 
     def _choose_schema(self) -> Dict[str, Any]:
         # Return the JSON schema for BulletPointsOutput
-        return BulletPointsGeneration.model_json_schema()
+        return self.parser_response_model_schema
 
     def _process_page(
         self,

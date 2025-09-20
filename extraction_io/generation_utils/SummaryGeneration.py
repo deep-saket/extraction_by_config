@@ -19,7 +19,7 @@ class SummaryGeneration(BaseModel):
     }
     """
     field_name: str = Field(..., description="Logical field name or summary key")
-    summary: Union[
+    value: Union[
         str,
         Dict[str, str]
     ] = Field(

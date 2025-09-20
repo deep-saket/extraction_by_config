@@ -22,7 +22,7 @@ summarise_section:
   prompt: |
     Summarize the section titled "{section_name}" for field "{field_name}". ## this value should not be modified in the output
     Use the following context:
-    {section_text}
+    {page_text}
     
     Output a single JSON object matching this schema:
     {schema}
@@ -46,7 +46,7 @@ summarise_whole:
     Summarize the entire document for field "{field_name}". ## this value should not be modified in the output
     
     Document content:
-    {doc_text}
+    {page_text}
     
     Output a single JSON object matching this schema:
     {schema}

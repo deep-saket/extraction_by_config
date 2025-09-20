@@ -13,7 +13,7 @@ class SummaryResultBuilder:
         if gen is None:
             return ""
         if isinstance(gen, SummaryGeneration):
-            summary_field = gen.summary
+            summary_field = gen.value
         elif isinstance(gen, dict):
             summary_field = gen.get('summary', '')
         else:
