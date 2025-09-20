@@ -1,0 +1,55 @@
+# Prompts for parent-based and summary extraction (ExtractionItemsSummariser)
+
+summarise_extraction_items:
+  prompt: |
+    You are an expert summarizer.
+    Field to summarize: "{field_name}"
+    
+    Raw content:
+    """
+    {raw_data}
+    """
+    
+    Context from related fields ({num_parents}):
+    {parent_lines}
+    
+    Please produce a single JSON object that conforms exactly to this schema:
+    {schema}
+    
+    Make sure your response is valid JSON with no extra commentary.
+
+summarise_section:
+  prompt: |
+    Summarize the section titled "{section_name}" for field "{field_name}".
+    Use the following context:
+    {section_text}
+    
+    Output a single JSON object matching this schema:
+    {schema}
+    
+    No extra commentary.
+
+summarise_pages:
+  prompt: |
+    Summarize the following pages for field "{field_name}": {pages}
+    
+    Page content:
+    {page_text}
+    
+    Output a single JSON object matching this schema:
+    {schema}
+    
+    No extra commentary.
+
+summarise_whole:
+  prompt: |
+    Summarize the entire document for field "{field_name}".
+    
+    Document content:
+    {doc_text}
+    
+    Output a single JSON object matching this schema:
+    {schema}
+    
+    No extra commentary.
+

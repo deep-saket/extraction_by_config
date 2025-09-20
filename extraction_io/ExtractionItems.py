@@ -82,51 +82,28 @@ class ExtractionItem(BaseModel):
 
     @model_validator(mode="after")
     def validate_scope_for_type(cls, item: "ExtractionItem") -> "ExtractionItem":
-        """
-        After the model is built, ensure:
-          - If type=='summary', scope must be one of the four summary options, and required fields exist.
-          - If type=='checkbox', scope must be 'single_value' or 'multi_value'.
-          - Otherwise (key-value or bullet-points) no scope is required/used.
-        """
         typ = item.type
         scope = item.scope
-        extra = item.extra or {}
-
         if typ == "summary":
-            # 1) Must have a valid scope
             if scope not in ("whole", "section", "pages", "extraction_items"):
                 raise ValueError(
-                    "When type=='summary', 'scope' must be one of "
-                    "['whole', 'section', 'pages', 'extraction_items']."
+                    "When type=='summary', 'scope' must be one of ['whole', 'section', 'pages', 'extraction_items']."
                 )
-
             # 2) If section, require section_name
-            if scope == "section":
-                if not item.section_name:
-                    raise ValueError("When scope=='section', 'section_name' must be provided.")
-
+            if scope == "section" and not item.section_name:
+                raise ValueError("When scope=='section', 'section_name' must be provided.")
             # 3) If pages, require non-empty probable_pages
-            if scope == "pages":
-                if not item.probable_pages:
-                    raise ValueError("When scope=='pages', 'probable_pages' must be a non-empty list.")
-
-            # 4) If extraction_items, require extra_rules['fields_to_summarize']
-            if scope == "extraction_items":                
-                if not item.parent or not isinstance(item.parent, list):
-                    raise ValueError(
-                        "When scope=='extraction_items', item.parent "
-                        "must be a non-empty list of field_name strings."
-                    )
-                item.extra["parent_processor"] = "ExtractionItemsSummariser"
-
+            if scope == "pages" and not item.probable_pages:
+                raise ValueError("When scope=='pages', 'probable_pages' must be a non-empty list.")
+            # 4) If extraction_items, require non-empty parent
+            if scope == "extraction_items" and (not item.parent or not isinstance(item.parent, list)):
+                raise ValueError("When scope=='extraction_items', 'parent' must be a non-empty list of field_name strings.")
         elif typ == "checkbox":
-            # For checkbox, scope must be 'single_value' or 'multi_value'
             if scope not in ("single_value", "multi_value"):
                 raise ValueError(
                     "When type=='checkbox', 'scope' must be one of ['single_value', 'multi_value']."
                 )
-
-        # For 'key-value' or 'bullet-points', we do not require scope to be set.
+        # For other types, no scope required
         return item
 
 

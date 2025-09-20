@@ -1,10 +1,10 @@
-from src.parsers.ParserBase import ParserBase
+from src.parsers.ParseBase import ParseBase
 from extraction_io.ExtractionItems import ExtractionItem
 from extraction_io.ExtractionOutputs import TableOutput
 from models import ModelManager
 from typing import List, Any, Optional
 
-class ParseTable(ParserBase):
+class ParseTable(ParseBase):
     """
     Uses a Vision-Language Model (VLM) to extract tables from document images/pages.
     Inherit from ParserBase for consistency with other parser types.

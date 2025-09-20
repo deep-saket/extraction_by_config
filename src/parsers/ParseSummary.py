@@ -1,70 +1,101 @@
-# src/parsers/parse_summary.py
-
-from typing import  Dict, Any, Optional
-from PIL import Image
-from extraction_io.generation_utils import SummaryGeneration
 from src.parsers.ParseBase import ParseBase
+from extraction_io.ExtractionItems import ExtractionItem
+from extraction_io.generation_utils.SummaryGeneration import SummaryGeneration
 from common import ExtractionState
-
+from typing import List, Any
+from src.helper.ParentProcessor import ParentProcessor
 
 class ParseSummary(ParseBase):
     """
-    Concrete parser for 'summarization' extraction. Implements:
-      - _choose_schema(): Returns the SummaryGeneration schema.
-      - _process_page(): Extract one summary fragment per page, updating prev_summary.
+    Parser for summary extraction supporting all scopes: whole, section, pages, extraction_items.
+    It uses the provided VLMProcessor for page/image summarization and delegates
+    parent-based summarization to a configured parent processor via ParentProcessor.
     """
+    def __init__(self, item: ExtractionItem, vlm_processor, prompt_builder, parser_response_model):
+        super().__init__(item, vlm_processor, prompt_builder, parser_response_model)
+        self.parent_processor = ParentProcessor()
 
-    def _choose_schema(self) -> Dict[str, Any]:
-        # Return the JSON schema for SummaryGeneration
-        return SummaryGeneration.model_json_schema()
+    def _choose_schema(self):
+        return self.parser_response_model_schema
 
-    def _process_page(
-        self,
-        page_num: int,
-        prev_summary: str
-    ) -> Optional[Dict[str, Any]]:
-        """
-        1) Locate the image for page_num.
-        2) Build and send the prompt (including prev_summary).
-        3) Parse the VLM output into a SummaryGeneration instance.
-        4) Return a dict with keys:
-           {
-             "summary": <fragment string or dict>,
-             "continue_next_page": <bool>,
-             "page_number": page_num
-           }
-        """
-        # Find the matching image path
-        image_path = None
-        for (num, path) in ExtractionState.get_images():
-            if num == page_num:
-                image_path = path
-                break
-
-        # If no image found (shouldn't happen if page list is valid), skip
+    def _process_page(self, page_num: int, prev_value: str) -> Any:
+        # For summaries we return a SummaryGeneration model for the page
+        image_path = self.vlm_processor.pdf_processor.get_page_image(page_num)
         if image_path is None:
             return None
+        schema_dict = SummaryGeneration.model_json_schema()
+        prompt = self.prompt_builder.build(self.item, schema_dict=schema_dict, prev_value=prev_value)
+        gen = self.vlm_processor(image_path, prompt, SummaryGeneration)
+        return gen
 
-        img = Image.open(image_path).convert("RGB")
+    def run(self, pages: List[int]) -> SummaryGeneration:
+        item = self.item
+        scope = item.scope
 
-        # Build the prompt using the PromptBuilder (passes previous concatenated summary)
-        prompt = self.prompt_builder(self.item, prev_summary)
+        if scope == "extraction_items":
+            # Gather parent outputs from ExtractionState and concatenate
+            parent_texts = []
+            for parent_name in item.parent:
+                resp = ExtractionState.get_response_by_field_name(parent_name)
+                if resp is not None:
+                    # Convert parent response into text
+                    text = self._parent_to_text(resp.root if hasattr(resp, 'root') else resp)
+                    parent_texts.append(text)
+            raw_concat = "\n\n".join(parent_texts)
 
-        # Call the VLM to get raw output
-        raw_output = self.vlm_processor(img, prompt, typ="summarization")
+            # Delegate to ParentProcessor which will pick configured processor (e.g., ExtractionItemsSummariser)
+            result = self.parent_processor(raw_concat)
+            # ParentProcessor returns either transformed raw_data or a Pydantic model depending on processor
+            if isinstance(result, SummaryGeneration):
+                return result
+            # If processor returned a raw string or dict, wrap into SummaryGeneration
+            if isinstance(result, str):
+                return SummaryGeneration(field_name=item.field_name, summary=result, continue_next_page=False)
+            try:
+                # attempt to coerce dict
+                return SummaryGeneration.model_validate(result)
+            except Exception:
+                return SummaryGeneration(field_name=item.field_name, summary=str(result), continue_next_page=False)
 
-        if isinstance(raw_output, dict):
-            val = raw_output.get("value", "")
-            post = raw_output.get("post_processing_value", None)
-        elif hasattr(raw_output, "value"):
-            val = getattr(raw_output, "value", "")
-            post = getattr(raw_output, "post_processing_value", None)
-        else:
-            val = str(raw_output)
-            post = None
+        # For page-based scopes (whole/section/pages)
+        fragments: List[str] = []
+        prev_value = ""
+        for p in pages:
+            gen = self._process_page(p, prev_value)
+            if gen is None:
+                continue
+            frag_text = gen.summary if isinstance(gen.summary, str) else (gen.summary.get('summary') if isinstance(gen.summary, dict) else str(gen.summary))
+            fragments.append(frag_text)
+            prev_value = "\n".join(fragments)
+            if not getattr(gen, 'continue_next_page', False):
+                break
 
-        return {
-            "value": val,
-            "post_processing_value": post,
-            "page_number": page_num
-        }
+        final_summary = "\n\n".join(fragments).strip()
+        return SummaryGeneration(field_name=item.field_name, summary=final_summary, continue_next_page=False)
+
+    def _parent_to_text(self, parent_obj: Any) -> str:
+        if parent_obj is None:
+            return ""
+        obj = parent_obj
+        # If it's a RootModel wrapper, try to access .root
+        if hasattr(obj, 'root'):
+            obj = obj.root
+        if hasattr(obj, 'value') and isinstance(obj.value, str):
+            return obj.value
+        if hasattr(obj, 'value') and isinstance(obj.value, list):
+            parts = []
+            for pt in obj.value:
+                try:
+                    parts.append(pt.value)
+                except Exception:
+                    parts.append(str(pt))
+            return "\n".join(parts)
+        if hasattr(obj, 'rows'):
+            rows = []
+            for r in obj.rows:
+                try:
+                    rows.append(str(r.row))
+                except Exception:
+                    rows.append(str(r))
+            return "\n".join(rows)
+        return str(obj)

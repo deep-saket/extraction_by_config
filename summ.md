@@ -1,4 +1,3 @@
-
 # Summary Extraction Guide
 
 This guide explains how to configure and run **summary extraction** within the DE (Document Extraction) pipeline. It covers:
@@ -15,22 +14,22 @@ This guide explains how to configure and run **summary extraction** within the D
 
 ## 1. Supported Summary Types
 
-Our DE system supports four summary “scopes”:
+Our DE system supports four summary “scopes” (set via the `scope` field):
 
 - **whole**  
   Summarize the entire document end-to-end.  
   *Config keys:*  
   ```yaml
-  type: "summarization"
-  summary_scope: "whole"
+  type: "summary"
+  scope: "whole"
   ```  
 
 - **section**  
   Summarize a named section (e.g. “How to make a claim”).  
   *Config keys:*  
   ```yaml
-  type: "summarization"
-  summary_scope: "section"
+  type: "summary"
+  scope: "section"
   section_name: "<exact heading text>"
   search_keys: ["<heading phrase 1>", "<heading phrase 2>"]
   ```  
@@ -39,21 +38,20 @@ Our DE system supports four summary “scopes”:
   Summarize a fixed set of pages (e.g. pages 10–12).  
   *Config keys:*  
   ```yaml
-  type: "summarization"
-  summary_scope: "pages"
+  type: "summary"
+  scope: "pages"
   probable_pages: [10, 11, 12]
   ```  
 
-- **extracted_fields**  
+- **extraction_items**  
   Summarize previously extracted fields (e.g. “CoverageDetails” + “ExcessSummary”).  
   *Config keys:*  
   ```yaml
-  type: "summarization"
-  summary_scope: "extracted_fields"
-  extra_rules:
-    fields_to_summarize:
-      - "CoverageDetails"
-      - "ExcessSummary"
+  type: "summary"
+  scope: "extraction_items"
+  parent:
+    - "CoverageDetails"
+    - "ExcessSummary"
   ```  
 
 ---
@@ -64,39 +62,39 @@ Each summary item must validate against the `ExtractionItem` schema. Key fields:
 
 - `field_name` (str): Unique name of the summary output.  
 - `description` (str): Brief description or hint for the summary.  
-- `type` ("summarization"): Marks this item as a summary.  
-- `summary_scope` (Literal): One of `"whole"`, `"section"`, `"pages"`, `"extracted_fields"`.  
-- `section_name` (str, optional): Required if `summary_scope=="section"`.  
-- `probable_pages` (List[int], optional): Required if `summary_scope=="pages"`.  
-- `extra_rules.fields_to_summarize` (List[str], optional): Required if `summary_scope=="extracted_fields"`.  
+- `type` ("summary"): Marks this item as a summary.  
+- `scope` (Literal): One of `"whole"`, `"section"`, `"pages"`, `"extraction_items"`.  
+- `section_name` (str, optional): Required if `scope=="section"`.  
+- `probable_pages` (List[int], optional): Required if `scope=="pages"`.  
+- `parent` (List[str], optional): Required if `scope=="extraction_items"`; lists the field_names to summarize.  
 - `search_keys` (List[str], optional): One or more short phrases to guide embedding‐based page retrieval.  
 
 A simplified Pydantic snippet:
 
 ```python
 from pydantic import BaseModel, Field, model_validator
-from typing import List, Optional, Literal, Dict, Any
+from typing import List, Optional, Literal
 
 class ExtractionItem(BaseModel):
     field_name: str
     description: str
-    type: Literal["key-value", "bullet-points", "summarization"]
-    summary_scope: Optional[Literal["whole", "section", "pages", "extracted_fields"]] = None
+    type: Literal["key-value", "bullet-points", "summary"]
+    scope: Optional[Literal["whole", "section", "pages", "extraction_items"]] = None
     section_name: Optional[str] = None
     probable_pages: Optional[List[int]] = None
-    extra_rules: Dict[str, Any] = {}
+    parent: Optional[List[str]] = []
     search_keys: Optional[List[str]] = []
 
     @model_validator(mode="after")
     def check_summary(cls, values):
-        if values["type"] == "summarization":
-            scope = values.get("summary_scope")
+        if values["type"] == "summary":
+            scope = values.get("scope")
             if scope == "section" and not values.get("section_name"):
                 raise ValueError("section_name required for scope 'section'")
             if scope == "pages" and not values.get("probable_pages"):
                 raise ValueError("probable_pages required for scope 'pages'")
-            if scope == "extracted_fields" and not values["extra_rules"].get("fields_to_summarize"):
-                raise ValueError("fields_to_summarize required in extra_rules")
+            if scope == "extraction_items" and not values.get("parent"):
+                raise ValueError("parent (list of field_names) required for scope 'extraction_items'")
         return values
 ```  
 
@@ -236,8 +234,8 @@ class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
 extraction_items:
   - field_name: "FullDocSummary"
     description: "One-paragraph overview of entire PDF"
-    type: "summarization"
-    summary_scope: "whole"
+    type: "summary"
+    scope: "whole"
     search_keys:
       - "Product Disclosure Statement"
 ```
@@ -248,8 +246,8 @@ extraction_items:
 extraction_items:
   - field_name: "ClaimsProcedureSummary"
     description: "How to make a claim"
-    type: "summarization"
-    summary_scope: "section"
+    type: "summary"
+    scope: "section"
     section_name: "How to make a claim"
     search_keys:
       - "How to make a claim"
@@ -262,8 +260,8 @@ extraction_items:
 extraction_items:
   - field_name: "FinancialsSummary"
     description: "Summarize pages 30–32"
-    type: "summarization"
-    summary_scope: "pages"
+    type: "summary"
+    scope: "pages"
     probable_pages: [30, 31, 32]
 ```
 
@@ -273,12 +271,11 @@ extraction_items:
 extraction_items:
   - field_name: "PolicyOverviewSummary"
     description: "Summary of key policy details"
-    type: "summarization"
-    summary_scope: "extracted_fields"
-    extra_rules:
-      fields_to_summarize:
-        - "CoverageDetails"
-        - "ExcessSummary"
+    type: "summary"
+    scope: "extraction_items"
+    parent:
+      - "CoverageDetails"
+      - "ExcessSummary"
 ```
 
 ---

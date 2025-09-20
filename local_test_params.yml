@@ -1,4 +1,4 @@
-pdf_path: "dataset/251849.pdf"
-output_json_path: "output/251849.json"
-extraction_config_path: "de_config/251849.json"
+pdf_path: "dataset/home_pds_0322.pdf"
+output_json_path: "output/home_pds_0322.json"
+extraction_config_path: "de_config/home_pds_0322.json"
 field_name: []

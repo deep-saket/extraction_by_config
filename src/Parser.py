@@ -140,7 +140,7 @@ class Parser(BaseComponent):
           1) Determine extype (e.g., "key-value", "table").
           2) Determine the list of pages: use `probable_pages` or call PageFinder on embeddings.
           3) Dynamically instantiate the correct Parse* class via _get_parser_for_type().
-          4) If the item has parents, retrieve their outputs and pass as parent_outputs to parser_instance.run.
+          4) Parsers can access parent info from ExtractionState if needed.
           5) Feed the result into the corresponding ResultBuilder.
           6) Validate final Pydantic model via ExtractionOutput.model_validate() and store it in state.
         """
@@ -159,21 +159,12 @@ class Parser(BaseComponent):
             parser_response_model = self._get_parser_generation_model(item)
             parser_instance = self._get_parser_for_type(item, parser_response_model)
 
-            # Parent tag logic
-            parent_outputs = None
-            if hasattr(item, 'parent') and item.parent:
-                parent_outputs = [ExtractionState.get_response_by_field(parent_name) for parent_name in item.parent]
-                # Remove None values if any parent not found
-                parent_outputs = [p for p in parent_outputs if p is not None]
-                self.logger.info(f"[Parser] Item '{item.field_name}' has parents: {item.parent}. Passing parent_outputs to parser.")
+            # Call parser (parsers access parent info via ExtractionState if necessary)
+            raw_data = parser_instance(pages)
 
-            # Call parser with or without parent_outputs
-            if parent_outputs:
-                raw_data = parser_instance.run(pages, parent_outputs=parent_outputs)
-            else:
-                raw_data = parser_instance.run(pages)
-
+            # Apply any generic parent_processor transformations
             raw_data = self.parent_processor(raw_data)
+
             cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
             builder_class_name = f"{cls_suffix}ResultBuilder"
             builder_module = importlib.import_module("extraction_io.result_builders")

@@ -1,5 +1,6 @@
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Any
 from extraction_io.ExtractionOutputs import SummaryOutput
+from extraction_io.generation_utils.SummaryGeneration import SummaryGeneration
 
 
 class SummaryResultBuilder:
@@ -8,29 +9,42 @@ class SummaryResultBuilder:
     """
 
     @staticmethod
+    def _extract_text_from_generation(gen: Any) -> str:
+        if gen is None:
+            return ""
+        if isinstance(gen, SummaryGeneration):
+            summary_field = gen.summary
+        elif isinstance(gen, dict):
+            summary_field = gen.get('summary', '')
+        else:
+            # could be a string
+            return str(gen)
+
+        if isinstance(summary_field, str):
+            return summary_field
+        if isinstance(summary_field, dict):
+            return summary_field.get('summary', '')
+        return str(summary_field)
+
+    @staticmethod
     def build(
         field_name: str,
-        fragments: str,
+        fragments: Any,
         *args,
         page_range: Optional[List[int]] = None,
         related_fields: Optional[List[str]] = None,
+        key: str = "",
         **kwargs
     ) -> SummaryOutput:
         """
-        Given the concatenated summary text and optional metadata,
+        Given the SummaryGeneration (or raw string) and optional metadata,
         produce a validated SummaryOutput.
-
-        Args:
-          field_name:     logical name or identifier for this summary.
-          summary:        the final summary text (all fragments concatenated).
-          page_range:     [start_page, end_page] or None.
-          related_fields: list of extracted field names summarized, or None.
         """
-        summary = fragments.summary['summary']
+        summary_text = SummaryResultBuilder._extract_text_from_generation(fragments)
         return SummaryOutput(
             field_name=field_name,
-            value=summary,
+            value=summary_text,
+            key=key,
             page_range=page_range,
-            related_fields=related_fields,
-            key=""
+            related_fields=related_fields
         )
