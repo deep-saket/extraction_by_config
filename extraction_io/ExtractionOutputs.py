@@ -103,28 +103,70 @@ class CheckboxOutput(BaseModel):
 
 
 # 7) Table row fragment model for multi-page table support
+
+class TableCell(BaseModel):
+    """
+    A single cell in a table row. Column can be addressed by index (1-based)
+    and optionally by resolved column name (if headers are known).
+    """
+    col: int = Field(..., description="1-indexed column number")
+    value: str = Field(..., description="Extracted cell value")
+    col_name: Optional[str] = Field(
+        None, description="Resolved column name if available (from headers)"
+    )
+
+
+class TableRow(BaseModel):
+    """
+    One logical table row (possibly aggregated across pages).
+    """
+    row: int = Field(..., description="1-indexed global row index")
+    page_number: Optional[int] = Field(
+        None, description="Source page for this row (if known)"
+    )
+    cells: List[TableCell] = Field(..., description="Cells for this row")
+
+
 class TableRowFragment(BaseModel):
-    key: Optional[str] = Field(None, description="Optional key for the row, if applicable")
-    value: List[Dict[str, Any]] = Field(..., description="List of column values as dictionaries")
-    page_number: int = Field(..., description="1-indexed page number where this row was found")
-    index: int = Field(..., description="Global index of this row across all pages")
+    """
+    Per-page fragment (for multipage_detail), mirroring the structure of TableRow.
+    Use this to keep page-wise provenance when you later concatenate rows.
+    """
+    index: int = Field(..., description="1-indexed row index within the overall table")
+    page_number: int = Field(..., description="1-indexed page where this fragment was found")
+    cells: List[TableCell] = Field(..., description="Cells captured on this page")
 
 
 # 8) Table output model for structured table extraction results
 class TableOutput(BaseModel):
-    key: Optional[str] = Field(None, description="Optional key for the table, if applicable")
-    value: List[List[Dict[str, Any]]] = Field(..., description="List of rows, where each row is a list of column value dictionaries")
-    columns: Optional[List[str]] = Field(default_factory=list, description="Optional list of column names (may be empty if unknown)")
-    page_numbers: List[int] = Field(default_factory=list, description="List of pages the table spans")
+    field_name: str = Field(..., description="Logical field name of the table")
+    value: List[TableRow] = Field(..., description="Final, ordered list of table rows")
+    key: str = Field(..., description="Literal search key used for extraction")
+    columns: List[str] = Field(
+        default_factory=list,
+        description="Resolved header row (ordered list of column names). May be empty if unknown."
+    )
+    page_numbers: List[int] = Field(
+        default_factory=list, description="Pages this table spans (unique, sorted)"
+    )
     multipage_detail: Optional[List[TableRowFragment]] = Field(
         None,
-        description="If present, details per page for multi-page tables. Each fragment shows the row, page, and index."
+        description=(
+            "Optional per-page breakdown of rows/cells before aggregation. "
+            "Useful for provenance/debug when tables span multiple pages."
+        )
     )
+
+    @model_validator(mode="after")
+    def _validate_non_empty_rows(cls, v: "TableOutput") -> "TableOutput":
+        if not v.value:
+            raise ValueError("TableOutput.value must contain at least one row.")
+        return v
 
 
 # 9) Now define ExtractionOutput as a RootModel of the union
 class ExtractionOutput(RootModel[Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput]]):
-    root: Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput]
+    root: Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput, TableOutput]
     # Use a private attribute for 'interim' so RootModel doesn't break; private attrs are not serialized
     _interim: bool = PrivateAttr(default=False)
 
@@ -149,6 +191,20 @@ class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
                 flat[obj.field_name] = [pt.value for pt in obj.value]
             elif isinstance(obj, SummaryOutput):
                 flat[obj.field_name] = obj.value
+            elif isinstance(obj, TableOutput):
+                # Convert rows → dicts using headers when available; else fallback to col_1, col_2...
+                header = obj.columns or []
+                row_dicts: List[Dict[str, Any]] = []
+                for row in obj.value:
+                    rd: Dict[str, Any] = {}
+                    for cell in row.cells:
+                        key = (
+                                cell.col_name
+                                or (header[cell.col - 1] if 0 < cell.col <= len(header) else f"col_{cell.col}")
+                        )
+                        rd[key] = cell.value
+                    row_dicts.append(rd)
+                flat[obj.field_name] = row_dicts
             else:  # CheckboxOutput
                 # Represent each PointFragment as its dict (point_number, value, page_number, etc.)
                 flat[obj.field_name] = [pt.model_dump() for pt in obj.value]

@@ -100,16 +100,14 @@ user:
     {postfix}
 
   table: |
-    Extract the table relevant to the field "{field_name}" from the specified pages.
+    Extract the table relevant for field_name = "{field_name}".
     - Use the description to help you locate, identify, and disambiguate the correct table: "{description}".
     - The description may specify where to find the table, what it contains, or how to identify it among multiple tables.
-    - Return the table as a list of rows, each row as a JSON object with column names as keys.
-    - If the table spans multiple pages, use the "continue_next_page" flag to indicate whether the table continues on the next page.
-    - Pass the "table_header" from the first page to subsequent pages for more accurate extraction if "continue_next_page" is True.
+    - Return the table as a dict json object exactly as the schema having field_name, rows and continue_next_page.
+    - rows will be a list where each entry will have row_number and cols which will be a list where each entry will have col_number numbered in increasing order.
     - Always merge adjacent text fragments that belong to the same cell (e.g., line-wrapped descriptions) into a single cell value.
     - If search_keys are provided in the config, use them to locate the relevant section of the document.
-    - If no table is found, return an empty list.
-    - Only include rows that are relevant to the description: "{description}".
+    - if the table is completely present in the page then output continue_next_page as false else ture
     - Output format: JSON array of row objects, each with a page_number field.
     {instruction}
     {postfix}

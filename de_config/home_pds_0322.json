@@ -16,11 +16,18 @@
       "multiline_value": true
     },
     {
-      "field_name": "SummaryDetails",
+      "field_name": "SummaryDetails1",
       "description": "Summarise the fields",
       "probable_pages": [],
       "type": "summary",
       "scope": "extraction_items",
       "parent": ["ContentsNotInsured", "PDSDate"]
+    },
+    {
+      "field_name": "SummaryDetails2",
+      "description": "Summarise the fields",
+      "probable_pages": [1, 2, 3, 4, 5],
+      "type": "summary",
+      "scope": "pages"
     }
 ]

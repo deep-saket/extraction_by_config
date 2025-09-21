@@ -164,7 +164,7 @@ class Parser(BaseComponent):
             raw_data = parser_instance(pages)
 
             # Apply any generic parent_processor transformations
-            raw_data = self.parent_processor(raw_data.value)
+            raw_data = self.parent_processor(raw_data)
 
             model_obj = self.result_builder_factory(item, raw_data)
             root = model_obj.root

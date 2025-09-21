@@ -4,6 +4,7 @@ from extraction_io.ExtractionOutputs import TableOutput
 from models import ModelManager
 from typing import List, Any, Optional, Dict
 from extraction_io.generation_utils import TableGeneration
+from common import ExtractionState
 
 
 class ParseTable(ParseBase):
@@ -11,21 +12,16 @@ class ParseTable(ParseBase):
     Uses a Vision-Language Model (VLM) to extract tables from document images/pages.
     Inherit from ParserBase for consistency with other parser types.
     """
-    def __init__(self, extraction_item: ExtractionItem, vlm_processor, prompt_builder, parser_response_model):
-        super().__init__(extraction_item, vlm_processor, prompt_builder, parser_response_model)
-        self.vlm = getattr(ModelManager, vlm_processor.model_name, None)
-        if self.vlm is None:
-            raise ValueError(f"VLM candidate '{vlm_processor.model_name}' not loaded in ModelManager.")
 
     def _choose_schema(self) -> Dict[str, Any]:
         """
         Return the JSON schema dict for this extraction type (KeyValue or BulletPoints).
         Subclasses override this to call the appropriate Pydantic .model_json_schema().
         """
-        return TableGeneration.model_json_schema()
+        return self.parser_response_model.model_json_schema()
 
     def _process_page(self, page_num: int, prev_value: str, table_header) -> Any:
-        image_path = self.vlm_processor.pdf_processor.get_page_image(page_num)
+        image_path = ExtractionState.get_image(page_num)
         if image_path is None:
             return None
         schema_dict = self._choose_schema()
@@ -37,7 +33,7 @@ class ParseTable(ParseBase):
         )
         gen = self.vlm_processor(image_path, prompt, TableGeneration)
         # Attach page number info to returned model for aggregation
-        return { 'gen': gen, 'page': page_num, 'table_header': table_header }
+        return { 'gen': gen, 'page': page_num }
 
     def run(self, pages: List[int]) -> TableOutput:
         item = self.item

@@ -86,17 +86,7 @@ class ParseSummary(ParseBase):
 
         # Default behavior: process pages normally
         # ParentProcessor returns either transformed raw_data or a Pydantic model depending on processor
-        if isinstance(result, self.parser_response_model):
-            return result
-        # If processor returned a raw string or dict, wrap into self.parser_response_model
-        if isinstance(result, str):
-            return self.parser_response_model(field_name=item.field_name, value=result, continue_next_page=False)
-        try:
-            # attempt to coerce dict
-            return self.parser_response_model.model_validate(result)
-        except Exception:
-            return self.parser_response_model(field_name=item.field_name, value=str(result), continue_next_page=False)
-
+        return result
 
     def _parent_to_text(self, parent_obj: Any) -> str:
         if parent_obj is None:
