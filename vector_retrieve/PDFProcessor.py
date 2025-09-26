@@ -170,4 +170,3 @@ class PDFProcessor(CallableComponent):
             if num == page_num:
                 return img_path
         return None
-

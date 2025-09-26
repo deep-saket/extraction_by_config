@@ -231,8 +231,12 @@ class PromptBuilder(CallableComponent):
             columns_section="",
         )
 
+        prev_part = ""
+        if prev_value and item.multipage_value:
+            prev_part = f"\n\nNote: This page is a continuation of the current, extraction value found in prev page : {prev_value}"
+
         # 9) Combine
-        return system_part + "\n\n" + user_part
+        return system_part + "\n\n" + user_part + prev_part
 
     def _render_from_dict(
         self,

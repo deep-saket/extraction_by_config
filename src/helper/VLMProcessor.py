@@ -29,24 +29,35 @@ class VLMProcessor(CallableComponent):
         """
         item = kwargs.get('item') if kwargs.get('item') else ExtractionState.get_current_extraction_item()
 
-        self.logger.info("Running VLM inference on image_data...")
-        raw_output = self.vlm_infer.infer(image_data, prompt)
-        self.logger.info("Finished VLM inference on image_data.")
+        parsed = None
+        for i in range(2):
+            self.logger.info("Running VLM inference on image_data...")
+            raw_output = self.vlm_infer.infer(image_data, prompt)
+            self.logger.info("Finished VLM inference on image_data.")
 
-        try:
-            # Attempt to parse as JSON string
-            parsed = DirtyJsonParser.parse(raw_output)
-        except json.JSONDecodeError as e:
-            raise RuntimeError(f"VLM did not return valid JSON: {raw_output!r}") from e
+            try:
+                # Attempt to parse as JSON string
+                parsed = DirtyJsonParser.parse(raw_output)
 
-        # Validate against the appropriate generation model
-        try:
-            parsed = generation_model.model_validate(parsed)
-            if item:
-                parsed.field_name = item.field_name
-            return parsed
-        except ValidationError as e:
-            raise RuntimeError(f"VLM JSON failed schema validation: {e}") from e
+            except json.JSONDecodeError as e:
+                # raise RuntimeError(f"VLM did not return valid JSON: {raw_output!r}") from e
+                self.logger.warning(f"VLM output is not valid JSON (attempt {i+1}/2): {e}. Retrying...")
+                prompt += "\n\nPlease respond with valid JSON only."
+                continue
+
+            # Validate against the appropriate generation model
+            try:
+                parsed = generation_model.model_validate(parsed)
+                if item:
+                    parsed.field_name = item.field_name
+                return parsed
+            except ValidationError as e:
+                self.logger.warning(f"VLM output is not valid JSON (attempt {i+1}/2): {e}. Retrying...")
+                prompt += "\n\nPlease respond with valid JSON only."
+                parsed = None
+
+        return parsed
+
 
     def __call__(self, image_data, prompt, generation_model, *args, **kwargs):
         return self.extract(image_data, prompt, generation_model, **kwargs)
