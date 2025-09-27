@@ -80,7 +80,7 @@ interface FormItem {
               </div>
               <div class="card-body p-0" style="height: 75vh;">
                 <ng-container *ngIf="pdfUrl(); else noPdf2">
-                  <iframe [src]="pdfUrl() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
+                  <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
                 </ng-container>
                 <ng-template #noPdf2>
                   <div class="d-flex align-items-center justify-content-center h-100 text-muted">No PDF selected.</div>
@@ -118,18 +118,25 @@ interface FormItem {
                 <!-- Form Editor -->
                 <div *ngIf="formMode()">
                   <div class="d-flex justify-content-between align-items-center mb-2">
-                    <div class="fw-semibold">Fields</div>
-                    <button class="btn btn-sm btn-outline-primary" (click)="addField()">Add Field</button>
+                    <div class="fw-semibold">Fields ({{ formItems().length }})</div>
+                    <div class="d-flex gap-2">
+                      <button class="btn btn-sm btn-outline-secondary" (click)="expandAll.set(true)">Expand all</button>
+                      <button class="btn btn-sm btn-outline-secondary" (click)="expandAll.set(false)">Collapse all</button>
+                      <button class="btn btn-sm btn-outline-primary" (click)="addField()">Add Field</button>
+                    </div>
+                  </div>
+                  <div class="mb-2 small text-muted text-truncate">
+                    {{ fieldNamesSummary() }}
                   </div>
 
                   <div class="accordion" id="fieldsAcc">
                     <div class="accordion-item" *ngFor="let it of formItems(); let i = index">
                       <h2 class="accordion-header" id="h{{i}}">
-                        <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" [attr.data-bs-target]="'#c'+i">
+                        <button class="accordion-button" [class.collapsed]="!expandAll()" type="button" data-bs-toggle="collapse" [attr.data-bs-target]="'#c'+i">
                           {{ it.field_name || 'Untitled Field' }}
                         </button>
                       </h2>
-                      <div [id]="'c'+i" class="accordion-collapse collapse" [attr.aria-labelledby]="'h'+i" data-bs-parent="#fieldsAcc">
+                      <div [id]="'c'+i" class="accordion-collapse collapse" [class.show]="expandAll()" [attr.aria-labelledby]="'h'+i">
                         <div class="accordion-body">
                           <div class="row g-2">
                             <div class="col-12 col-md-6">
@@ -164,7 +171,7 @@ interface FormItem {
                             </div>
                             <div class="col-12">
                               <label class="form-label">Search Keys (one per line)</label>
-                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].search_keys||[]).join('\n')" (ngModelChange)="onSearchKeysChange(i, $event)"></textarea>
+                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].search_keys||[]).join('\\n')" (ngModelChange)="onSearchKeysChange(i, $event)"></textarea>
                             </div>
 
                             <div class="col-12 col-md-6" *ngIf="formItems()[i].type==='summary'">
@@ -194,17 +201,17 @@ interface FormItem {
 
                             <div class="col-12">
                               <label class="form-label">Parent (one per line)</label>
-                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].parent||[]).join('\n')" (ngModelChange)="onParentChange(i, $event)"></textarea>
+                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].parent||[]).join('\\n')" (ngModelChange)="onParentChange(i, $event)"></textarea>
                             </div>
 
                             <div class="col-12" *ngIf="formItems()[i].type==='table'">
                               <label class="form-label">Table Header (one per line; optional)</label>
-                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].table_header||[]).join('\n')" (ngModelChange)="onTableHeaderChange(i, $event)"></textarea>
+                              <textarea class="form-control" rows="2" [ngModel]="(formItems()[i].table_header||[]).join('\\n')" (ngModelChange)="onTableHeaderChange(i, $event)"></textarea>
                             </div>
 
                             <div class="col-12">
                               <label class="form-label">Extra (JSON)</label>
-                              <textarea class="form-control font-monospace" rows="3" [ngModel]="(formItems()[i].extra? JSON.stringify(formItems()[i].extra, null, 2):'{}')" (ngModelChange)="onExtraChange(i, $event)"></textarea>
+                              <textarea class="form-control font-monospace" rows="3" [ngModel]="(formItems()[i].extra? stringify(formItems()[i].extra):'{}')" (ngModelChange)="onExtraChange(i, $event)"></textarea>
                             </div>
 
                             <div class="col-12 text-end">
@@ -285,15 +292,66 @@ interface FormItem {
             <div class="card shadow-sm">
               <div class="card-header py-2"><strong>Results</strong></div>
               <div class="card-body">
-                <div class="row g-3">
-                  <div class="col-12 col-md-6" *ngFor="let t of tiles()">
-                    <div class="border rounded p-3 h-100">
-                      <div class="fw-semibold">{{ t.field_name }}</div>
-                      <div class="text-muted small">Pages: {{ t.pages || '-' }}</div>
-                      <div class="mt-2" style="white-space: pre-wrap;">{{ t.value }}</div>
+                <ng-container *ngIf="selectedIndex()===null; else resultDetail">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6" *ngFor="let t of tiles(); let i = index">
+                      <button class="border rounded p-3 h-100 w-100 text-start bg-white" (click)="onTileClick(i)">
+                        <div class="small text-muted">Field Name</div>
+                        <div class="fw-semibold mb-1">{{ t.field_name }}</div>
+                        <div class="small text-muted">Value</div>
+                        <div class="mb-1" style="white-space: pre-wrap;">{{ t.value }}</div>
+                        <div class="small text-muted">Pages</div>
+                        <div>{{ t.pages || '-' }}</div>
+                      </button>
                     </div>
                   </div>
-                </div>
+                </ng-container>
+                <ng-template #resultDetail>
+                  <div class="d-flex align-items-center justify-content-between mb-2">
+                    <div class="fw-semibold">Details</div>
+                    <button class="btn btn-sm btn-outline-secondary" (click)="clearSelection()">Back</button>
+                  </div>
+                  <div class="mb-2"><span class="small text-muted">Field</span><div class="fw-semibold">{{ currentItem()?.field_name || 'Unknown' }}</div></div>
+                  <div class="mb-2"><span class="small text-muted">Type</span><div>{{ currentType() }}</div></div>
+                  <ng-container [ngSwitch]="currentType()">
+                    <div *ngSwitchCase="'key-value'">
+                      <div class="mb-2"><span class="small text-muted">Value</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
+                      <div class="mb-2"><span class="small text-muted">Page</span><div>{{ currentItem()?.page_number }}</div></div>
+                    </div>
+                    <div *ngSwitchCase="'summary'">
+                      <div class="mb-2"><span class="small text-muted">Summary</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
+                      <div class="mb-2"><span class="small text-muted">Pages</span><div>{{ currentItem()?.page_range?.[0] }} - {{ currentItem()?.page_range?.[1] }}</div></div>
+                    </div>
+                    <div *ngSwitchCase="'bullet-points'">
+                      <div class="mb-2"><span class="small text-muted">Points</span></div>
+                      <ul class="mb-2">
+                        <li *ngFor="let p of (currentItem()?.value || [])">{{ p.value }} <span class="text-muted small">(p{{ p.page_number }})</span></li>
+                      </ul>
+                    </div>
+                    <div *ngSwitchCase="'checkbox'">
+                      <div class="mb-2"><span class="small text-muted">Selections</span></div>
+                      <ul class="mb-2">
+                        <li *ngFor="let p of (currentItem()?.value || [])">{{ p.value }} <span class="text-muted small">(p{{ p.page_number }})</span></li>
+                      </ul>
+                    </div>
+                    <div *ngSwitchCase="'table'">
+                      <div class="mb-2"><span class="small text-muted">Rows</span></div>
+                      <div class="table-responsive">
+                        <table class="table table-sm table-bordered mb-0">
+                          <tbody>
+                            <tr *ngFor="let row of (currentItem()?.value || []).slice(0, 10)">
+                              <td *ngFor="let cell of row">{{ cell }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                        <div class="small text-muted mt-1">Showing up to 10 rows</div>
+                      </div>
+                    </div>
+                    <div *ngSwitchDefault>
+                      <pre class="mb-0">{{ currentItem() | json }}</pre>
+                    </div>
+                  </ng-container>
+                </ng-template>
               </div>
             </div>
             <div class="text-end mt-3">
@@ -309,7 +367,7 @@ interface FormItem {
               </div>
               <div class="card-body p-0" style="height: 75vh;">
                 <ng-container *ngIf="pdfUrl(); else noPdf3">
-                  <iframe [src]="pdfUrl() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
+                  <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
                 </ng-container>
                 <ng-template #noPdf3>
                   <div class="d-flex align-items-center justify-content-center h-100 text-muted">No PDF selected.</div>
@@ -347,6 +405,10 @@ export class AppComponent {
   validationMsg = signal<string>('');
   formMode = signal<boolean>(false);
   formItems = signal<FormItem[]>([]);
+
+  pdfPage = signal<number | null>(null);
+  selectedIndex = signal<number | null>(null);
+  expandAll = signal<boolean>(true);
 
   constructor(private api: ApiService) { this.init(); }
 
@@ -520,5 +582,55 @@ export class AppComponent {
   onCheckboxScopeChange(i: number, val: 'single_value' | 'multi_value') {
     this.formItems()[i].scope = val;
     this.onFormChange();
+  }
+
+  pdfSrc(): string {
+    const base = this.pdfUrl();
+    if (!base) return '';
+    const p = this.pdfPage();
+    return p ? `${base}#page=${p}` : base;
+  }
+  onTileClick(i: number) {
+    const items = Array.isArray(this.result()) ? this.result() : [];
+    const item = items[i];
+    this.selectedIndex.set(i);
+    const page = this.firstPageOf(item);
+    if (page) this.pdfPage.set(page);
+  }
+  clearSelection() { this.selectedIndex.set(null); }
+  currentItem(): any { const idx = this.selectedIndex(); return idx===null ? null : (this.result() || [])[idx]; }
+  currentType(): string { return this.guessType(this.currentItem()); }
+  fieldNamesSummary(): string {
+    try {
+      return (this.formItems() || []).map((it: any) => it?.field_name || 'Untitled').join(', ');
+    } catch { return ''; }
+  }
+
+  private firstPageOf(item: any): number | null {
+    if (!item) return null;
+    const t = this.guessType(item);
+    if (t === 'key-value') {
+      return typeof item.page_number === 'number' ? item.page_number : null;
+    }
+    if (t === 'summary') {
+      return Array.isArray(item.page_range) && item.page_range.length ? Number(item.page_range[0]) : null;
+    }
+    if (t === 'bullet-points' || t === 'checkbox') {
+      if (Array.isArray(item.value)) {
+        const nums = item.value
+          .map((v: any) => v?.page_number)
+          .filter((n: any) => typeof n === 'number');
+        return nums.length ? Math.min(...nums) : null;
+      }
+      return null;
+    }
+    if (t === 'table') {
+      return Array.isArray(item.page_numbers) && item.page_numbers.length ? Number(item.page_numbers[0]) : null;
+    }
+    return null;
+  }
+
+  stringify(val: any): string {
+    try { return JSON.stringify(val, null, 2); } catch { return '{}'; }
   }
 }
