@@ -79,7 +79,7 @@ interface FormItem {
                 <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
               </div>
               <div class="card-body p-0" style="height: 75vh;">
-                <ng-container *ngIf="pdfUrl(); else noPdf2">
+                <ng-container *ngIf="pdfUrl() && pdfIframeVisible(); else noPdf2">
                   <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
                 </ng-container>
                 <ng-template #noPdf2>
@@ -295,14 +295,17 @@ interface FormItem {
                 <ng-container *ngIf="selectedIndex()===null; else resultDetail">
                   <div class="row g-3">
                     <div class="col-12 col-md-6" *ngFor="let t of tiles(); let i = index">
-                      <button class="border rounded p-3 h-100 w-100 text-start bg-white" (click)="onTileClick(i)">
+                      <div role="button" class="border rounded p-3 h-100 w-100 text-start bg-white" style="cursor: pointer;" (click)="onTileClick(i)">
                         <div class="small text-muted">Field Name</div>
                         <div class="fw-semibold mb-1">{{ t.field_name }}</div>
                         <div class="small text-muted">Value</div>
                         <div class="mb-1" style="white-space: pre-wrap;">{{ t.value }}</div>
                         <div class="small text-muted">Pages</div>
-                        <div>{{ t.pages || '-' }}</div>
-                      </button>
+                        <div *ngIf="pagesForIndex(i).length; else noPages" class="d-flex flex-wrap gap-1">
+                          <button type="button" class="btn btn-sm btn-light border" *ngFor="let p of pagesForIndex(i)" (click)="gotoPage(p, $event)">{{ p }}</button>
+                        </div>
+                        <ng-template #noPages>-</ng-template>
+                      </div>
                     </div>
                   </div>
                 </ng-container>
@@ -313,14 +316,18 @@ interface FormItem {
                   </div>
                   <div class="mb-2"><span class="small text-muted">Field</span><div class="fw-semibold">{{ currentItem()?.field_name || 'Unknown' }}</div></div>
                   <div class="mb-2"><span class="small text-muted">Type</span><div>{{ currentType() }}</div></div>
+                  <div class="mb-2" *ngIf="pagesForSelected().length">
+                    <span class="small text-muted">Pages</span>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                      <button type="button" class="btn btn-sm btn-light border" *ngFor="let p of pagesForSelected()" (click)="gotoPage(p)">{{ p }}</button>
+                    </div>
+                  </div>
                   <ng-container [ngSwitch]="currentType()">
                     <div *ngSwitchCase="'key-value'">
-                      <div class="mb-2"><span class="small text-muted">Value</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
-                      <div class="mb-2"><span class="small text-muted">Page</span><div>{{ currentItem()?.page_number }}</div></div>
+                       <div class="mb-2"><span class="small text-muted">Value</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
                     </div>
                     <div *ngSwitchCase="'summary'">
-                      <div class="mb-2"><span class="small text-muted">Summary</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
-                      <div class="mb-2"><span class="small text-muted">Pages</span><div>{{ currentItem()?.page_range?.[0] }} - {{ currentItem()?.page_range?.[1] }}</div></div>
+                       <div class="mb-2"><span class="small text-muted">Summary</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
                     </div>
                     <div *ngSwitchCase="'bullet-points'">
                       <div class="mb-2"><span class="small text-muted">Points</span></div>
@@ -366,7 +373,7 @@ interface FormItem {
                 <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
               </div>
               <div class="card-body p-0" style="height: 75vh;">
-                <ng-container *ngIf="pdfUrl(); else noPdf3">
+                <ng-container *ngIf="pdfUrl() && pdfIframeVisible(); else noPdf3">
                   <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
                 </ng-container>
                 <ng-template #noPdf3>
@@ -409,6 +416,8 @@ export class AppComponent {
   pdfPage = signal<number | null>(null);
   selectedIndex = signal<number | null>(null);
   expandAll = signal<boolean>(true);
+  pdfIframeVisible = signal<boolean>(true);
+  navVersion = signal<number>(0);
 
   constructor(private api: ApiService) { this.init(); }
 
@@ -420,7 +429,18 @@ export class AppComponent {
 
   schemaChanged(): boolean { return !!this.lastKnownSchemaHash() && !!this.schemaHash() && this.schemaHash() !== this.lastKnownSchemaHash(); }
 
-  onFileChange(ev: Event) { const input = ev.target as HTMLInputElement; if (input.files && input.files.length > 0) { const f = input.files[0]; this.file.set(f); this.fileName.set(f.name); this.pdfUrl.set(URL.createObjectURL(f)); } }
+  onFileChange(ev: Event) {
+    const input = ev.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      const f = input.files[0];
+      this.file.set(f);
+      this.fileName.set(f.name);
+      this.pdfUrl.set(URL.createObjectURL(f));
+      this.pdfPage.set(null);
+      this.navVersion.set(0);
+      this.pdfIframeVisible.set(true);
+    }
+  }
   goToConfig() { if (this.file()) this.step.set(2); }
   onSelectConfig(name: string) { this.selectedConfig.set(name); }
 
@@ -483,7 +503,7 @@ export class AppComponent {
           if (Array.isArray(item.value)) {
             value = item.value.map((p: any) => p?.value).filter(Boolean).join('\n• ');
             const pgSet = new Set<number>(); for (const p of item.value) if (p?.page_number) pgSet.add(p.page_number);
-            pages = Array.from(pgSet).sort((a,b)=>a-b).join(', ');
+            pages = Array.from(pgSet).sort((a:number,b:number)=>a-b).join(', ');
             if (value) value = '• ' + value;
           }
           break;
@@ -588,14 +608,15 @@ export class AppComponent {
     const base = this.pdfUrl();
     if (!base) return '';
     const p = this.pdfPage();
-    return p ? `${base}#page=${p}` : base;
+    const v = this.navVersion();
+    return p ? `${base}#page=${p}&v=${v}` : `${base}#v=${v}`;
   }
   onTileClick(i: number) {
     const items = Array.isArray(this.result()) ? this.result() : [];
     const item = items[i];
     this.selectedIndex.set(i);
     const page = this.firstPageOf(item);
-    if (page) this.pdfPage.set(page);
+    if (page) this.gotoPage(page);
   }
   clearSelection() { this.selectedIndex.set(null); }
   currentItem(): any { const idx = this.selectedIndex(); return idx===null ? null : (this.result() || [])[idx]; }
@@ -632,5 +653,42 @@ export class AppComponent {
 
   stringify(val: any): string {
     try { return JSON.stringify(val, null, 2); } catch { return '{}'; }
+  }
+
+  pagesList(item: any): number[] {
+    if (!item) return [];
+    const t = this.guessType(item);
+    if (t === 'key-value' && typeof item.page_number === 'number') return [Number(item.page_number)];
+    if (t === 'summary' && Array.isArray(item.page_range) && item.page_range.length) {
+      const a = Number(item.page_range[0]);
+      const b = Number(item.page_range[1] ?? item.page_range[0]);
+      const out = [a];
+      if (!isNaN(b) && b !== a) out.push(b);
+      return out.filter(n => !isNaN(n));
+    }
+    if ((t === 'bullet-points' || t === 'checkbox') && Array.isArray(item.value)) {
+      const set = new Set<number>();
+      for (const v of item.value) if (typeof v?.page_number === 'number') set.add(Number(v.page_number));
+      return Array.from(set).sort((x:number,y:number)=>x-y);
+    }
+    if (t === 'table' && Array.isArray(item.page_numbers)) {
+      return item.page_numbers.map((n:any)=>Number(n)).filter((n:number)=>!isNaN(n)).sort((a:number,b:number)=>a-b);
+    }
+    return [];
+  }
+  pagesForIndex(i: number): number[] {
+    const arr = Array.isArray(this.result()) ? this.result() : [];
+    return this.pagesList(arr[i]);
+  }
+  pagesForSelected(): number[] { return this.pagesList(this.currentItem()); }
+  gotoPage(p: number, ev?: Event) {
+    if (ev) ev.stopPropagation();
+    if (typeof p === 'number' && !isNaN(p)) {
+      this.pdfPage.set(p);
+      this.navVersion.set(this.navVersion() + 1);
+      // Force iframe re-creation so viewers that ignore hash updates still navigate
+      this.pdfIframeVisible.set(false);
+      setTimeout(() => this.pdfIframeVisible.set(true), 25);
+    }
   }
 }
