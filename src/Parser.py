@@ -54,10 +54,11 @@ class Parser(BaseComponent):
 
         # 3) Dynamically import and instantiate helper components now that ModelManager is ready
         self.prompt_builder = PromptBuilder()
-        self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate))
+        # Initialize LMProcessor first, then pass into VLMProcessor for schema-repair fallback
+        self.lm_processor = LMProcessor(getattr(ModelManager, self.vlm_candidate))
+        self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate), self.lm_processor)
         self.page_finder = PageFinder(self.pdf_processor)
         self.parent_processor = ParentProcessor()
-        self.lm_processor = LMProcessor(getattr(ModelManager, self.vlm_candidate))
         self.result_builder_factory = ResultBuilderFactory()
 
     def _validate_extraction_items(self, extraction_items: Union[List[dict], ExtractionItems]) -> ExtractionItems:

@@ -76,7 +76,7 @@ class TableResultBuilder:
 
                 table_rows.append(
                     TableRow(
-                        index=global_idx,
+                        row=global_idx,
                         page_number=page_num,
                         cells=cells,
                     )

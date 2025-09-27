@@ -1,7 +1,9 @@
 import torch
 from transformers import AutoModel, AutoTokenizer, AutoConfig
 from PIL import Image
-from huggingface_hub import InferenceClient
+import base64
+import json
+import requests
 from common import InferenceVLComponent
 from io import BytesIO
 from tempfile import NamedTemporaryFile
@@ -22,7 +24,8 @@ class H2OVLInfer(InferenceVLComponent):
         self.generation_config = dict(max_new_tokens=2048, do_sample=True)
 
         if self.api_endpoint and self.api_token:
-            self.client = InferenceClient(model=self.api_endpoint, token=self.api_token)
+            # OpenAI-compatible remote
+            self.client = True
         elif model_name:
             config = AutoConfig.from_pretrained(model_name, trust_remote_code=True)
             config.llm_config._attn_implementation = 'flash_attention_2' if self.device == 'cuda' else 'eager'
@@ -92,8 +95,26 @@ class H2OVLInfer(InferenceVLComponent):
 
         try:
             if self.client:
-                response = self.client.text_generation(prompt)
-                return response if isinstance(response, str) else str(response)
+                headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+                payload = {
+                    "model": "auto",
+                    "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+                    "temperature": 0,
+                }
+                url = self.api_endpoint.rstrip('/') + "/v1/chat/completions"
+                r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+                r.raise_for_status()
+                data = r.json()
+                try:
+                    content = data["choices"][0]["message"]["content"]
+                    if isinstance(content, list):
+                        for part in content:
+                            if isinstance(part, dict) and part.get("type") == "text":
+                                return part.get("text", "")
+                        return json.dumps(content)
+                    return content
+                except Exception:
+                    return json.dumps(data)
             elif self.model and self.tokenizer:
                 history = None
                 response, history = self.model.chat(
@@ -112,6 +133,42 @@ class H2OVLInfer(InferenceVLComponent):
 
     def _infer_via_api(self, image_data, prompt):
         """
-        API fallback, if needed.
+        OpenAI-compatible chat completion with image.
         """
-        return {"error": "API inference not implemented for this model."}
+        # Prepare image
+        if isinstance(image_data, bytes):
+            img = Image.open(BytesIO(image_data)).convert("RGB")
+        elif isinstance(image_data, Image.Image):
+            img = image_data
+        elif isinstance(image_data, str):
+            img = Image.open(image_data).convert("RGB")
+        else:
+            raise ValueError("image_data must be bytes, PIL.Image, or path")
+
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        data_url = f"data:image/png;base64,{b64}"
+
+        messages = [
+            {"role": "user", "content": [
+                {"type": "image_url", "image_url": {"url": data_url}},
+                {"type": "text", "text": prompt},
+            ]}
+        ]
+        payload = {"model": "auto", "messages": messages, "temperature": 0}
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        url = self.api_endpoint.rstrip('/') + "/v1/chat/completions"
+        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        return part.get("text", "")
+                return json.dumps(content)
+            return content
+        except Exception:
+            return json.dumps(data)

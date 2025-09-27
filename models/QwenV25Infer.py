@@ -3,7 +3,9 @@ from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
 from PIL import Image
 from io import BytesIO
-from huggingface_hub import InferenceClient
+import base64
+import json
+import requests
 from common import InferenceVLComponent
 from abc import abstractmethod
 
@@ -43,7 +45,8 @@ class QwenV25Infer(InferenceVLComponent):
         self.processor = None
 
         if self.api_endpoint and self.api_token:
-            self.client = InferenceClient(model=api_endpoint, token=api_token)
+            # Use OpenAI-compatible HTTP interface
+            self.client = True
         elif model_name:
             print(f"Loading {model_name} model...")
             self.model = Qwen2_5_VLForConditionalGeneration.from_pretrained(
@@ -137,22 +140,57 @@ class QwenV25Infer(InferenceVLComponent):
         return generated_text
 
     def _infer_via_api(self, image_data, prompt):
-        """
-        Performs inference via the specified API.
-
-        Args:
-            image_data (bytes): The image data in bytes format.
-            prompt (str): The textual prompt for the model.
-
-        Returns:
-            dict: The API response containing the generated text or an error message.
-        """
-        image = Image.open(BytesIO(image_data)).convert("RGB")
-        response = self.client.text_to_image(prompt, image=image)
-        if response:
-            return response
+        """Call an OpenAI-compatible chat endpoint and return assistant text."""
+        if isinstance(image_data, bytes):
+            img = Image.open(BytesIO(image_data)).convert("RGB")
+        elif isinstance(image_data, Image.Image):
+            img = image_data
+        elif isinstance(image_data, str):
+            img = Image.open(image_data).convert("RGB")
         else:
-            return {"error": "API request failed."}
+            raise ValueError("Image must be either bytes, PIL Image, or path.")
+
+        # Encode image as base64 data URL (PNG)
+        buf = BytesIO()
+        img.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        data_url = f"data:image/png;base64,{b64}"
+
+        messages = [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "image_url", "image_url": {"url": data_url}},
+                    {"type": "text", "text": prompt},
+                ],
+            }
+        ]
+        payload = {
+            "model": "auto",  # server may ignore/route
+            "messages": messages,
+            "temperature": 0,
+        }
+        headers = {
+            "Authorization": f"Bearer {self.api_token}",
+            "Content-Type": "application/json",
+        }
+        url = self.api_endpoint.rstrip('/') + "/v1/chat/completions"
+        resp = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        # Parse OpenAI-style response
+        try:
+            msg = data["choices"][0]["message"]["content"]
+            if isinstance(msg, list):
+                # content may be list of parts
+                for part in msg:
+                    if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
+                        return part["text"]
+                return json.dumps(msg)
+            return msg
+        except Exception:
+            # fallback
+            return json.dumps(data)
 
     def infer_lang(self, prompt: str = None) -> str:
         """
@@ -169,8 +207,32 @@ class QwenV25Infer(InferenceVLComponent):
 
         try:
             if self.client:
-                response = self.client.text_generation(prompt)
-                return response if isinstance(response, str) else str(response)
+                # OpenAI chat completion text-only
+                headers = {
+                    "Authorization": f"Bearer {self.api_token}",
+                    "Content-Type": "application/json",
+                }
+                url = self.api_endpoint.rstrip('/') + "/v1/chat/completions"
+                payload = {
+                    "model": "auto",
+                    "messages": [
+                        {"role": "user", "content": [{"type": "text", "text": prompt}]}
+                    ],
+                    "temperature": 0,
+                }
+                r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+                r.raise_for_status()
+                data = r.json()
+                try:
+                    msg = data["choices"][0]["message"]["content"]
+                    if isinstance(msg, list):
+                        for part in msg:
+                            if isinstance(part, dict) and part.get("type") == "text" and part.get("text"):
+                                return part["text"]
+                        return json.dumps(msg)
+                    return msg
+                except Exception:
+                    return json.dumps(data)
             elif self.model and self.processor:
                 messages = [
                     {
@@ -197,4 +259,3 @@ class QwenV25Infer(InferenceVLComponent):
                 raise ValueError("Model and processor or API details must be properly initialized for inference.")
         except Exception as e:
             raise RuntimeError(f"Text inference failed: {str(e)}") from e
-    

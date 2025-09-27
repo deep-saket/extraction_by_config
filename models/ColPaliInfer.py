@@ -1,5 +1,7 @@
 import json
 import torch
+import requests
+import base64
 from transformers import PretrainedConfig
 from colpali_engine.models import ColQwen2, ColQwen2Processor, ColPali, ColPaliProcessor
 from common import InferenceVLComponent
@@ -14,41 +16,47 @@ class ColPaliInfer(InferenceVLComponent):
     def __init__(
         self,
         model_name="vidore/colqwen2-v0.1",
+        api_endpoint=None,
+        api_token=None,
         device=None,
         torch_dtype=torch.bfloat16,
         device_map="auto",
     ):
         super().__init__()  # initializes self.logger, etc.
         device = "cpu" if not device else device
-        self.logger.info(f"Initializing ColPaliInfer: model={model_name}, device={device}")
+        self.api_endpoint = api_endpoint
+        self.api_token = api_token
+        self.client = True if (api_endpoint and api_token) else None
+        self.logger.info(f"Initializing ColPaliInfer: model={model_name}, device={device}, remote={'yes' if self.client else 'no'}")
 
-        # 1) Load raw config
-        self.logger.debug("Loading raw config from pretrained")
-        config = ColQwen2.config_class.from_pretrained(model_name)
+        if not self.client:
+            # 1) Load raw config
+            self.logger.debug("Loading raw config from pretrained")
+            config = ColQwen2.config_class.from_pretrained(model_name)
 
-        # 2) Wrap decoder_config if it's a dict (only if attribute exists)
-        decoder_cfg = getattr(config, "decoder_config", None)
-        if isinstance(decoder_cfg, dict):
-            self.logger.warning("decoder_config is plain dict; wrapping into PretrainedConfig")
-            config.decoder_config = PretrainedConfig.from_dict(decoder_cfg)
+            # 2) Wrap decoder_config if it's a dict (only if attribute exists)
+            decoder_cfg = getattr(config, "decoder_config", None)
+            if isinstance(decoder_cfg, dict):
+                self.logger.warning("decoder_config is plain dict; wrapping into PretrainedConfig")
+                config.decoder_config = PretrainedConfig.from_dict(decoder_cfg)
 
-        # 3) Load model with the corrected config
-        self.logger.info("Loading ColQwen2 model from pretrained")
-        self.model = (
-            ColQwen2.from_pretrained(
-                model_name,
-                #config=config,
-                torch_dtype=torch_dtype,
-                device_map=device_map,
+            # 3) Load model with the corrected config
+            self.logger.info("Loading ColQwen2 model from pretrained")
+            self.model = (
+                ColQwen2.from_pretrained(
+                    model_name,
+                    #config=config,
+                    torch_dtype=torch_dtype,
+                    device_map=device_map,
+                )
+                .eval()
+                .to(device)
             )
-            .eval()
-            .to(device)
-        )
-        self.logger.info("Model loaded and moved to %s", device)
+            self.logger.info("Model loaded and moved to %s", device)
 
-        # 4) Load processor
-        self.logger.info("Loading ColQwen2Processor")
-        self.processor = ColQwen2Processor.from_pretrained(model_name)
+            # 4) Load processor
+            self.logger.info("Loading ColQwen2Processor")
+            self.processor = ColQwen2Processor.from_pretrained(model_name)
 
         self.device = device
         self.model_name = model_name
@@ -79,6 +87,9 @@ class ColPaliInfer(InferenceVLComponent):
           - If prompt is given, returns its embedding.
         Exactly one of image_data or prompt must be provided.
         """
+        if self.client:
+            return self._infer_remote(image_data=image_data, prompt=prompt)
+
         if image_data is not None and prompt is None:
             self.logger.info("Running inference on image_data")
             # Normalize to PIL Image
@@ -107,3 +118,39 @@ class ColPaliInfer(InferenceVLComponent):
 
     def infer_lang(self, prompt: str = None) -> str:
         pass
+
+    def _infer_remote(self, image_data=None, prompt= None) -> str:
+        """Call OpenAI-compatible embeddings endpoint.
+        If prompt is provided, send as text input. If image_data is provided, encode as base64 data URL and send as input string.
+        Returns JSON string of embedding list.
+        """
+        if (image_data is None) == (prompt is None):
+            raise ValueError("Provide exactly one of 'image_data' or 'prompt' for embeddings")
+
+        if image_data is not None:
+            if isinstance(image_data, bytes):
+                img = Image.open(BytesIO(image_data)).convert("RGB")
+            elif isinstance(image_data, Image.Image):
+                img = image_data
+            elif isinstance(image_data, str):
+                img = Image.open(image_data).convert("RGB")
+            else:
+                raise TypeError("Unsupported image_data type for remote embeddings")
+            buf = BytesIO()
+            img.save(buf, format="PNG")
+            b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+            input_value = f"data:image/png;base64,{b64}"
+        else:
+            input_value = prompt
+
+        payload = {"model": "auto", "input": input_value}
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        url = self.api_endpoint.rstrip('/') + "/v1/embeddings"
+        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        try:
+            emb = data["data"][0]["embedding"]
+            return json.dumps(emb)
+        except Exception:
+            return json.dumps(data)

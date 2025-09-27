@@ -79,8 +79,8 @@ class ModelManager(BaseComponent):
             else:  # model_loading == "api"
                 api_endpoint = cls.config['models'][class_name].get("api_endpoint")
                 api_token    = cls.config['models'][class_name].get("api_token")
-                if api_token  or api_endpoint:
-                    raise KeyError(f"Expected 'api_endpoint and 'api_token' in config for API loading of '{class_name}'")
+                if not api_endpoint or not api_token:
+                    raise KeyError(f"Expected 'api_endpoint' and 'api_token' in config for API loading of '{class_name}'")
                 try:
                     instance = ModelClass(api_endpoint=api_endpoint, api_token=api_token)
                 except Exception as e:

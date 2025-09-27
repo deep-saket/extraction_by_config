@@ -4,7 +4,9 @@ import torch
 from transformers import AutoProcessor, AutoModelForVision2Seq
 from PIL import Image
 from io import BytesIO
-from huggingface_hub import InferenceClient
+import base64
+import json
+import requests
 
 from docling_core.types.doc.document import DocTagsDocument   # type: ignore
 from docling_core.types.doc import DoclingDocument             # type: ignore
@@ -16,27 +18,20 @@ class SmolDoclingInfer(InferenceVLComponent):
     SmolDocling-256M inference component (vision+text).
     """
 
-    def __init__(self, model_name="ds4sd/SmolDocling-256M-preview", config: dict = None):
-        """
-        config keys:
-          - model_name (str, default "ds4sd/SmolDocling-256M-preview")
-          - api_endpoint (str, optional)
-          - api_token (str, optional)
-          - device (str, optional, default "cuda")
-        """
-        super().__init__(config)
-        self.model_name =  model_name
+    def __init__(self, model_name="ds4sd/SmolDocling-256M-preview", api_endpoint=None, api_token=None, device: str = "cuda"):
+        super().__init__()
+        self.model_name = model_name
 
-        self.api_endpoint = self.config.get("api_endpoint")
-        self.api_token = self.config.get("api_token")
-        self.device = self.config.get("device", "cuda")
+        self.api_endpoint = api_endpoint
+        self.api_token = api_token
+        self.device = device
         self.client = None
         self.model = None
         self.processor = None
 
         if self.api_endpoint and self.api_token:
-            self.logger.info(f"Using SmolDocling API: {self.api_endpoint}")
-            self.client = InferenceClient(model=self.api_endpoint, token=self.api_token)
+            self.logger.info(f"Using SmolDocling API (OpenAI compatible): {self.api_endpoint}")
+            self.client = True
         elif self.model_name:
             self.logger.info(f"Loading SmolDocling model locally: {self.model_name}")
             self.processor = AutoProcessor.from_pretrained(self.model_name)
@@ -60,7 +55,7 @@ class SmolDoclingInfer(InferenceVLComponent):
             raise ValueError("Both image_data and prompt are required for SmolDocling.")
 
         if self.client:
-            self.logger.debug("Using remote SmolDocling API")
+            self.logger.debug("Using remote SmolDocling API (chat completions)")
             return self._infer_via_api(image_data, prompt)
         elif self.model and self.processor:
             self.logger.debug("Performing local SmolDocling inference")
@@ -123,12 +118,34 @@ class SmolDoclingInfer(InferenceVLComponent):
         else:
             raise ValueError("image_data must be bytes, PIL.Image, or file path.")
 
-        response = self.client.text_to_image(prompt, image=image)
-        if not response:
-            self.logger.error("SmolDocling API failed")
-            return ""
-        self.logger.info("SmolDocling API inference completed")
-        return response
+        buf = BytesIO()
+        image.save(buf, format="PNG")
+        b64 = base64.b64encode(buf.getvalue()).decode("utf-8")
+        data_url = f"data:image/png;base64,{b64}"
+
+        messages = [{
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": data_url}},
+                {"type": "text", "text": prompt}
+            ]
+        }]
+        headers = {"Authorization": f"Bearer {self.api_token}", "Content-Type": "application/json"}
+        payload = {"model": "auto", "messages": messages, "temperature": 0}
+        url = self.api_endpoint.rstrip('/') + "/v1/chat/completions"
+        r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
+        r.raise_for_status()
+        data = r.json()
+        try:
+            content = data["choices"][0]["message"]["content"]
+            if isinstance(content, list):
+                for part in content:
+                    if isinstance(part, dict) and part.get("type") == "text":
+                        return part.get("text", "")
+                return json.dumps(content)
+            return content
+        except Exception:
+            return json.dumps(data)
 
     def parse_to_json(self, doc_tags: str) -> dict:
         """
