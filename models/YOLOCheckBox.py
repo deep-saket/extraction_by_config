@@ -108,10 +108,10 @@ class YOLOCheckBox(InferenceVisionComponent):
             orig_image = cv2.rectangle(orig_image, top, bottom, colors[klass], 4)
 
             # Add confidence score behind the bounding box
-            label = f"Conf: {conf.item():.2f}"
-            text_color = (244, 67, 54)
-            orig_image = cv2.putText(orig_image, label, (top[0] - 120, top[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
-                                     text_color, 3)
+            # label = f"Conf: {conf.item():.2f}"
+            # text_color = (244, 67, 54)
+            # orig_image = cv2.putText(orig_image, label, (top[0] - 120, top[1]), cv2.FONT_HERSHEY_SIMPLEX, 0.7,
+            #                         text_color, 3)
 
         # Save the image if output path is provided
         if output_path:

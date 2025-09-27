@@ -32,7 +32,7 @@ class LMProcessor(CallableComponent):
 
         self.logger.info("Running LM inference...")
         raw_output = self.lm_infer.infer_lang(prompt)
-        self.logger.info("Finished LM inference.")
+        self.logger.info(f"Finished LM inference. {raw_output}")
 
         try:
         # Attempt to parse as JSON string
@@ -48,7 +48,8 @@ class LMProcessor(CallableComponent):
                 parsed.field_name = item.field_name
             return parsed
         except ValidationError as e:
-            raise RuntimeError(f"VLM JSON failed schema validation: {e}") from e
+            self.logger.exception(f"LM JSON failed schema validation: {e}")
+            return None
 
     def __call__(self, prompt, generation_model, *args, **kwargs):
         return self.extract(prompt, generation_model, **kwargs)

@@ -95,7 +95,9 @@ user:
     {postfix}
 
   checkbox: |
-    Now: extract the checkbox selection(s) for "{field_name}" (description: {description}).
+    Now: extract the checkbox selection(s) for "{field_name}" (description: {description}). 
+    In the image checked boexes marked blue and unchecked boxes are marked green in color for easier identification.
+    So you will need to extract text only coresponding to the blues.
     {instruction}
     {postfix}
 
