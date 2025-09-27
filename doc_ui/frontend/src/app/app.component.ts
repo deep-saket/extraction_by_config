@@ -73,12 +73,18 @@ interface FormItem {
       <div *ngIf="step()===2 || step()===3">
         <div class="row g-3">
           <div class="col-12 col-lg-7">
-            <div class="card shadow-sm">
+            <div class="card shadow-sm sticky-top" style="top: 12px;">
               <div class="card-header py-2 d-flex justify-content-between align-items-center">
                 <strong>PDF Preview</strong>
-                <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
+                <div class="d-flex align-items-center gap-3">
+                  <div class="form-check form-switch m-0 p-0 d-flex align-items-center gap-1">
+                    <input class="form-check-input" type="checkbox" id="lockSwitchA" [checked]="pdfLocked()" (change)="onPdfLockToggle($event)">
+                    <label class="form-check-label small" for="lockSwitchA">Lock scroll</label>
+                  </div>
+                  <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
+                </div>
               </div>
-              <div class="card-body p-0" style="height: 75vh;">
+              <div class="card-body p-0" style="height: 75vh;" [style.pointer-events]="pdfLocked() ? 'none' : 'auto'">
                 <ng-container *ngIf="pdfUrl() && pdfIframeVisible(); else noPdf2">
                   <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
                 </ng-container>
@@ -441,21 +447,27 @@ interface FormItem {
           </div>
 
           <div class="col-12 col-lg-5">
-            <div class="card shadow-sm">
-              <div class="card-header py-2 d-flex justify-content-between align-items-center">
-                <strong>PDF Preview</strong>
-                <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
-              </div>
-              <div class="card-body p-0" style="height: 75vh;">
-                <ng-container *ngIf="pdfUrl() && pdfIframeVisible(); else noPdf3">
-                  <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
-                </ng-container>
-                <ng-template #noPdf3>
-                  <div class="d-flex align-items-center justify-content-center h-100 text-muted">No PDF selected.</div>
-                </ng-template>
-              </div>
-            </div>
-          </div>
+            <div class="card shadow-sm sticky-top" style="top: 12px;">
+               <div class="card-header py-2 d-flex justify-content-between align-items-center">
+                 <strong>PDF Preview</strong>
+                 <div class="d-flex align-items-center gap-3">
+                  <div class="form-check form-switch m-0 p-0 d-flex align-items-center gap-1">
+                    <input class="form-check-input" type="checkbox" id="lockSwitchB" [checked]="pdfLocked()" (change)="onPdfLockToggle($event)">
+                    <label class="form-check-label small" for="lockSwitchB">Lock scroll</label>
+                  </div>
+                  <small class="text-muted" *ngIf="fileName()">{{ fileName() }}</small>
+                </div>
+               </div>
+               <div class="card-body p-0" style="height: 75vh;" [style.pointer-events]="pdfLocked() ? 'none' : 'auto'">
+                 <ng-container *ngIf="pdfUrl() && pdfIframeVisible(); else noPdf3">
+                   <iframe [src]="pdfSrc() | safeUrl" style="width:100%;height:100%;border:0;"></iframe>
+                 </ng-container>
+                 <ng-template #noPdf3>
+                   <div class="d-flex align-items-center justify-content-center h-100 text-muted">No PDF selected.</div>
+                 </ng-template>
+               </div>
+             </div>
+           </div>
         </div>
       </div>
 
@@ -476,6 +488,7 @@ export class AppComponent {
   file = signal<File | null>(null);
   fileName = signal<string>('');
   pdfUrl = signal<string>('');
+  pdfLocked = signal<boolean>(true);
 
   result = signal<any>(null);
   tiles = signal<ResultTile[]>([]);
@@ -862,8 +875,12 @@ export class AppComponent {
     const arr = Array.isArray(this.result()) ? this.result() : [];
     return arr[i];
   }
+  onPdfLockToggle(evt: Event) {
+    const input = evt.target as HTMLInputElement;
+    this.pdfLocked.set(!!input?.checked);
+  }
 
-  // Table helpers for schema-aware rendering and drill-down
+   // Table helpers for schema-aware rendering and drill-down
   private getTableColumns(it: any): string[] {
     if (!it) return [];
     const cols: string[] = Array.isArray(it.columns) && it.columns.length ? it.columns.slice() : [];
