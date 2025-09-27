@@ -293,22 +293,49 @@ interface FormItem {
               <div class="card-header py-2"><strong>Results</strong></div>
               <div class="card-body">
                 <ng-container *ngIf="selectedIndex()===null; else resultDetail">
-                  <div class="row g-3">
-                    <div class="col-12 col-md-6" *ngFor="let t of tiles(); let i = index">
-                      <div role="button" class="border rounded p-3 h-100 w-100 text-start bg-white" style="cursor: pointer;" (click)="onTileClick(i)">
-                        <div class="small text-muted">Field Name</div>
-                        <div class="fw-semibold mb-1">{{ t.field_name }}</div>
-                        <div class="small text-muted">Value</div>
-                        <div class="mb-1" style="white-space: pre-wrap;">{{ t.value }}</div>
-                        <div class="small text-muted">Pages</div>
-                        <div *ngIf="pagesForIndex(i).length" class="d-flex flex-wrap gap-1">
-                          <button type="button" class="btn btn-sm btn-light border" *ngFor="let p of pagesForIndex(i)" (click)="gotoPage(p, $event)">{{ p }}</button>
+                  <!-- Drill-down view -->
+                  <ng-container *ngIf="drilledParentIndex()!==null; else mainGrid">
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                      <div class="fw-semibold">Entries for {{ getItemAt(drilledParentIndex()!)?.field_name || 'Unknown' }}</div>
+                      <button class="btn btn-sm btn-outline-secondary" (click)="exitDrillDown()">Back</button>
+                    </div>
+                    <div class="row g-3">
+                      <div class="col-12 col-md-6" *ngFor="let e of drilledEntries(); let j = index">
+                        <div class="border rounded p-3 h-100 w-100 bg-white">
+                          <div class="small text-muted">Entry {{ j+1 }}</div>
+                          <div style="white-space: pre-wrap;">{{ e.label }}</div>
+                          <div class="mt-2" *ngIf="e.page">
+                            <button type="button" class="btn btn-sm btn-light border" (click)="gotoPage(e.page)">Go to page {{ e.page }}</button>
+                          </div>
                         </div>
-                        <div *ngIf="!pagesForIndex(i).length">-</div>
                       </div>
                     </div>
-                  </div>
-                </ng-container>
+                  </ng-container>
+                  <!-- Main tiles grid -->
+                  <ng-template #mainGrid>
+                    <div class="row g-3">
+                      <div class="col-12 col-md-6" *ngFor="let t of tiles(); let i = index">
+                        <div role="button" class="border rounded p-3 h-100 w-100 text-start bg-white" style="cursor: pointer;" (click)="onTileAreaClick(i)">
+                          <div class="small text-muted">Field Name</div>
+                          <div class="fw-semibold mb-1">{{ t.field_name }}</div>
+                          <div class="small text-muted">Value</div>
+                          <div class="mb-1" style="white-space: pre-wrap;">
+                            {{ expandedTileIndex()===i ? tileFullText(getItemAt(i)) : tilePreviewText(getItemAt(i)) }}
+                          </div>
+                          <div class="d-flex gap-2 mb-2">
+                            <a href="#" (click)="$event.preventDefault(); onTileClick(i)">View details</a>
+                            <a href="#" *ngIf="isMultiEntry(getItemAt(i)) && expandedTileIndex()===i" (click)="$event.preventDefault(); drilledParentIndex.set(i)">See entries</a>
+                          </div>
+                          <div class="small text-muted">Pages</div>
+                          <div *ngIf="pagesForIndex(i).length" class="d-flex flex-wrap gap-1">
+                            <button type="button" class="btn btn-sm btn-light border" *ngFor="let p of pagesForIndex(i)" (click)="gotoPage(p, $event)">{{ p }}</button>
+                          </div>
+                          <div *ngIf="!pagesForIndex(i).length">-</div>
+                        </div>
+                      </div>
+                    </div>
+                  </ng-template>
+                 </ng-container>
                 <ng-template #resultDetail>
                   <div class="d-flex align-items-center justify-content-between mb-2">
                     <div class="fw-semibold">Details</div>
@@ -379,11 +406,11 @@ interface FormItem {
                         <table class="table table-sm table-bordered mb-0">
                           <thead>
                             <tr>
-                              <th *ngFor="let h of tableHeaders()">{{ h }}</th>
+                              <th *ngFor="let h of tableHeaders">{{ h }}</th>
                             </tr>
                           </thead>
                           <tbody>
-                            <tr *ngFor="let rv of tablePreviewRows()">
+                            <tr *ngFor="let rv of tablePreviewRows">
                               <td *ngFor="let cell of rv">{{ cell }}</td>
                             </tr>
                           </tbody>
@@ -465,6 +492,8 @@ export class AppComponent {
   expandAll = signal<boolean>(true);
   pdfIframeVisible = signal<boolean>(true);
   navVersion = signal<number>(0);
+  expandedTileIndex = signal<number | null>(null);
+  drilledParentIndex = signal<number | null>(null);
 
   constructor(private api: ApiService) { this.init(); }
 
@@ -486,6 +515,8 @@ export class AppComponent {
       this.pdfPage.set(null);
       this.navVersion.set(0);
       this.pdfIframeVisible.set(true);
+      this.expandedTileIndex.set(null);
+      this.drilledParentIndex.set(null);
     }
   }
   goToConfig() { if (this.file()) this.step.set(2); }
@@ -665,6 +696,23 @@ export class AppComponent {
     const page = this.firstPageOf(item);
     if (page) this.gotoPage(page);
   }
+  onTileAreaClick(i: number) {
+    // First click expands, second click drills into entries if multi-entry; otherwise go to details
+    const items = Array.isArray(this.result()) ? this.result() : [];
+    const item = items[i];
+    const expanded = this.expandedTileIndex();
+    if (expanded !== i) {
+      this.expandedTileIndex.set(i);
+      this.drilledParentIndex.set(null);
+      return;
+    }
+    if (this.isMultiEntry(item)) {
+      this.drilledParentIndex.set(i);
+      return;
+    }
+    // fallback to detail view
+    this.onTileClick(i);
+  }
   clearSelection() { this.selectedIndex.set(null); }
   currentItem(): any { const idx = this.selectedIndex(); return idx===null ? null : (this.result() || [])[idx]; }
   currentType(): string { return this.guessType(this.currentItem()); }
@@ -739,11 +787,87 @@ export class AppComponent {
     }
   }
 
+  // Tile previews and drill-down helpers
+  private clamp(text: string, maxChars: number): string {
+    if (!text) return '';
+    if (text.length <= maxChars) return text;
+    return text.slice(0, maxChars).trimEnd() + '…';
+  }
+  isMultiEntry(item: any): boolean {
+    const t = this.guessType(item);
+    if (t === 'bullet-points' || t === 'checkbox') return Array.isArray(item?.value) && item.value.length > 1;
+    if (t === 'table') return Array.isArray(item?.value) && item.value.length > 1;
+    if (t === 'key-value') return Array.isArray(item?.multipage_detail) && item.multipage_detail.length > 1;
+    return false;
+  }
+  tilePreviewText(item: any): string {
+    const t = this.guessType(item);
+    if (t === 'key-value' || t === 'summary') return this.clamp(String(item?.value ?? ''), 140);
+    if (t === 'bullet-points' || t === 'checkbox') {
+      const arr = Array.isArray(item?.value) ? item.value : [];
+      const vals = arr.map((p:any)=>String(p?.value||'')).filter(Boolean);
+      const shown = vals.slice(0, 2).join('\n• ');
+      const more = vals.length > 2 ? `\n… (+${vals.length-2} more)` : '';
+      return (shown ? '• ' : '') + shown + more;
+    }
+    if (t === 'table') {
+      const rows = Array.isArray(item?.value) ? item.value.length : 0;
+      const cols = Array.isArray(item?.columns) ? item.columns.length : 0;
+      return `${rows} rows${cols?`, ${cols} cols`:''}`;
+    }
+    return this.clamp(typeof item?.value === 'string' ? item.value : JSON.stringify(item?.value ?? ''), 140);
+  }
+  tileFullText(item: any): string {
+    const t = this.guessType(item);
+    if (t === 'key-value' || t === 'summary') return String(item?.value ?? '');
+    if (t === 'bullet-points' || t === 'checkbox') {
+      const arr = Array.isArray(item?.value) ? item.value : [];
+      const vals = arr.map((p:any)=>String(p?.value||'')).filter(Boolean);
+      return (vals.length ? '• ' : '') + vals.join('\n• ');
+    }
+    if (t === 'table') {
+      const rows = Array.isArray(item?.value) ? item.value.length : 0;
+      const cols = Array.isArray(item?.columns) ? item.columns.length : 0;
+      return `${rows} rows${cols?`, ${cols} cols`:''}`;
+    }
+    return typeof item?.value === 'string' ? item.value : JSON.stringify(item?.value ?? '');
+  }
+  subEntriesFor(item: any): Array<{label: string, page?: number}> {
+    const t = this.guessType(item);
+    const entries: Array<{label:string,page?:number}> = [];
+    if (t === 'bullet-points' || t === 'checkbox') {
+      const arr = Array.isArray(item?.value) ? item.value : [];
+      for (const p of arr) entries.push({ label: String(p?.value||''), page: typeof p?.page_number==='number'?p.page_number:undefined });
+    } else if (t === 'key-value' && Array.isArray(item?.multipage_detail)) {
+      for (const f of item.multipage_detail) entries.push({ label: String(f?.value||''), page: typeof f?.page_number==='number'?f.page_number:undefined });
+    } else if (t === 'table' && Array.isArray(item?.value)) {
+      for (const row of item.value) {
+        const cells = Array.isArray(row?.cells) ? row.cells : [];
+        const sorted = cells.slice().sort((a:any,b:any)=>Number(a?.col||0)-Number(b?.col||0));
+        const label = sorted.map((c:any)=>String(c?.value ?? '')).join(' | ');
+        entries.push({ label, page: typeof row?.page_number==='number'?row.page_number:undefined });
+      }
+    }
+    return entries;
+  }
+  drilledEntries(): Array<{label:string,page?:number}> {
+    const idx = this.drilledParentIndex();
+    const items = Array.isArray(this.result()) ? this.result() : [];
+    const it = (idx===null)? null : items[idx];
+    return it ? this.subEntriesFor(it) : [];
+  }
+  exitDrillDown() { this.drilledParentIndex.set(null); }
+  getItemAt(i: number | null): any {
+    if (i===null) return null;
+    const arr = Array.isArray(this.result()) ? this.result() : [];
+    return arr[i];
+  }
+
+  // Table helpers for schema-aware rendering and drill-down
   private getTableColumns(it: any): string[] {
     if (!it) return [];
     const cols: string[] = Array.isArray(it.columns) && it.columns.length ? it.columns.slice() : [];
     if (cols.length) return cols;
-    // Derive from first few rows
     const rows = Array.isArray(it.value) ? it.value.slice(0, 10) : [];
     const indexSet = new Set<number>();
     const nameByIndex = new Map<number, string>();
@@ -760,26 +884,25 @@ export class AppComponent {
     const ordered = Array.from(indexSet).sort((a:number,b:number)=>a-b);
     return ordered.map(i => nameByIndex.get(i) || `col_${i}`);
   }
-  tableHeaders(): string[] { return this.getTableColumns(this.currentItem()); }
+  get tableHeaders(): string[] { return this.getTableColumns(this.currentItem()); }
   private rowToValues(it: any, row: any, headers: string[]): string[] {
-    const cells = Array.isArray(row?.cells) ? row.cells : [];
-    // Build a map from header name to value; prefer exact col_name match, fallback by col index
-    const byColIndex = new Map<number, string>();
-    const byColName = new Map<string, string>();
-    for (const c of cells) {
-      const idx = Number(c?.col);
-      if (!isNaN(idx)) byColIndex.set(idx, String(c?.value ?? ''));
-      const nm = c?.col_name; if (nm) byColName.set(String(nm), String(c?.value ?? ''));
-    }
-    const values: string[] = [];
-    headers.forEach((h, i) => {
-      let v = byColName.get(h);
-      if (v === undefined) v = byColIndex.get(i+1);
-      values.push(v ?? '');
-    });
-    return values;
-  }
-  tablePreviewRows(): string[][] {
+     const cells = Array.isArray(row?.cells) ? row.cells : [];
+     const byColIndex = new Map<number, string>();
+     const byColName = new Map<string, string>();
+     for (const c of cells) {
+       const idx = Number(c?.col);
+       if (!isNaN(idx)) byColIndex.set(idx, String(c?.value ?? ''));
+       const nm = c?.col_name; if (nm) byColName.set(String(nm), String(c?.value ?? ''));
+     }
+     const values: string[] = [];
+     headers.forEach((h, i) => {
+       let v = byColName.get(h);
+       if (v === undefined) v = byColIndex.get(i+1);
+       values.push(v ?? '');
+     });
+     return values;
+   }
+  get tablePreviewRows(): string[][] {
     const it = this.currentItem();
     const headers = this.getTableColumns(it);
     const rows = Array.isArray(it?.value) ? it.value.slice(0, 10) : [];
