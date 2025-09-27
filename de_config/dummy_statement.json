@@ -1,0 +1,81 @@
+[
+  {
+    "field_name": "VendorName",
+    "description": "Name of the vendor or payee shown on the statement (usually near the top-left or header).",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Vendor", "Payee", "Billed To"]
+  },
+  {
+    "field_name": "InvoiceNumber",
+    "description": "Unique invoice or statement number (often near the header).",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Invoice", "Statement #", "Invoice No"]
+  },
+  {
+    "field_name": "InvoiceDate",
+    "description": "Date of the invoice or statement.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Date", "Invoice Date", "Statement Date"]
+  },
+  {
+    "field_name": "AccountTracnsactions",
+    "description": "Table of line items: each row contains description, quantity, unit price, and line total.",
+    "probable_pages": [1],
+    "type": "table",
+    "multiline_value": true,
+    "multipage_value": true,
+    "parent": [],
+    "search_keys": ["Description", "Qty", "Unit Price", "Total"]
+  },
+  {
+    "field_name": "Subtotal",
+    "description": "Subtotal amount before taxes and fees.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Subtotal", "Sub total", "Subtotal amount"]
+  },
+  {
+    "field_name": "Tax",
+    "description": "Tax amount applied to the invoice.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Tax", "Sales Tax", "VAT"]
+  },
+  {
+    "field_name": "TotalDue",
+    "description": "Grand total or amount due.",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Total", "Amount Due", "Balance Due"]
+  },
+  {
+    "field_name": "PaymentSummary",
+    "description": "Short summary of payments and outstanding balance, derived from the line items and totals.",
+    "type": "summary",
+    "scope": "extraction_items",
+    "parent": ["LineItems", "Subtotal", "Tax", "TotalDue"],
+    "extra": {"parent_processor": "ExtractionItemsSummariser"}
+  }
+]
+
