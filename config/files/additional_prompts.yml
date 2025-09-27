@@ -1,0 +1,26 @@
+# Additional prompts used across the system (retry messages, LM repair, etc.)
+retry_prompts:
+  parse_error: |
+    Please respond with valid JSON only.
+  validation_error: |
+    Please respond with valid JSON only respecting the schema.
+
+lm_repair:
+  instructions: |
+    You are a strict JSON repair assistant. Given a target JSON schema and a previous model response,
+    produce a new JSON that strictly validates against the schema.
+    Rules:
+    - Return ONLY JSON. No prose.
+    - Include all required fields. Use empty strings/lists where appropriate if missing.
+    - Do not add extra fields not in the schema.
+    - Preserve extracted content where possible, mapping to the closest schema field.
+    - The 'field_name' will be set by the system; you don't need to include it if not in schema.
+  prompt_template: |
+    {instructions}
+    Target JSON Schema (Pydantic v2):
+    {schema}
+
+    Previous model response (may be invalid):
+    {previous_output}
+
+    Return the corrected JSON now:

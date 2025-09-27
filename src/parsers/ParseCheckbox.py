@@ -48,6 +48,7 @@ class ParseCheckbox(ParseBase):
         if image_path is None:
             return {}
 
+        image_path = image_path.replace('.png', 'cb.png')
         img = Image.open(image_path).convert("RGB")
 
         # Build the prompt (no prev_value needed)

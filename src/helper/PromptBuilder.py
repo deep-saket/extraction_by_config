@@ -4,7 +4,7 @@ import json
 from typing import Any, Dict
 from common import CallableComponent
 from extraction_io.ExtractionItems import ExtractionItem  # adjust import path if needed
-from config.loader import prompts
+from config.loader import prompts, additional_prompts
 
 
 class PromptBuilder(CallableComponent):
@@ -308,3 +308,47 @@ class PromptBuilder(CallableComponent):
         if not key or key not in self._summary_prompts:
             raise ValueError(f"No summary prompt found for scope '{scope}'")
         return self._summary_prompts[key]['prompt']
+
+    @staticmethod
+    def get_retry_prompt(kind: str) -> str:
+        """
+        Return the retry prompt text for a given kind. Supported kinds:
+          - 'parse_error'
+          - 'validation_error'
+        Falls back to reasonable defaults if not configured.
+        """
+        ap = additional_prompts or {}
+        retry = ap.get('retry_prompts', {}) if isinstance(ap, dict) else {}
+        defaults = {
+            'parse_error': 'Please respond with valid JSON only.',
+            'validation_error': 'Please respond with valid JSON only respecting the schema.',
+        }
+        return str(retry.get(kind) or defaults.get(kind) or '')
+
+    @staticmethod
+    def get_lm_repair_instructions() -> str:
+        ap = additional_prompts or {}
+        lm = ap.get('lm_repair', {}) if isinstance(ap, dict) else {}
+        default = (
+            "You are a strict JSON repair assistant. Given a target JSON schema and a previous model response, "
+            "produce a new JSON that strictly validates against the schema.\n"
+            "Rules:\n"
+            "- Return ONLY JSON. No prose.\n"
+            "- Include all required fields. Use empty strings/lists where appropriate if missing.\n"
+            "- Do not add extra fields not in the schema.\n"
+            "- Preserve extracted content where possible, mapping to the closest schema field.\n"
+            "- The 'field_name' will be set by the system; you don't need to include it if not in schema.\n"
+        )
+        return str(lm.get('instructions') or default)
+
+    @staticmethod
+    def build_lm_repair_prompt(schema_json: str, previous_output: str) -> str:
+        ap = additional_prompts or {}
+        lm = ap.get('lm_repair', {}) if isinstance(ap, dict) else {}
+        tmpl = lm.get('prompt_template') or (
+            "{instructions}\nTarget JSON Schema (Pydantic v2):\n{schema}\n\n"
+            "Previous model response (may be invalid):\n{previous_output}\n\n"
+            "Return the corrected JSON now:"
+        )
+        instr = PromptBuilder.get_lm_repair_instructions()
+        return tmpl.format(instructions=instr, schema=schema_json, previous_output=previous_output or '')
