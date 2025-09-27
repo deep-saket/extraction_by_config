@@ -301,10 +301,10 @@ interface FormItem {
                         <div class="small text-muted">Value</div>
                         <div class="mb-1" style="white-space: pre-wrap;">{{ t.value }}</div>
                         <div class="small text-muted">Pages</div>
-                        <div *ngIf="pagesForIndex(i).length; else noPages" class="d-flex flex-wrap gap-1">
+                        <div *ngIf="pagesForIndex(i).length" class="d-flex flex-wrap gap-1">
                           <button type="button" class="btn btn-sm btn-light border" *ngFor="let p of pagesForIndex(i)" (click)="gotoPage(p, $event)">{{ p }}</button>
                         </div>
-                        <ng-template #noPages>-</ng-template>
+                        <div *ngIf="!pagesForIndex(i).length">-</div>
                       </div>
                     </div>
                   </div>
@@ -325,34 +325,81 @@ interface FormItem {
                   <ng-container [ngSwitch]="currentType()">
                     <div *ngSwitchCase="'key-value'">
                        <div class="mb-2"><span class="small text-muted">Value</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
+                       <div class="mb-2" *ngIf="currentItem()?.post_processing_value">
+                         <span class="small text-muted">Post-processed</span>
+                         <div style="white-space: pre-wrap;">{{ currentItem()?.post_processing_value }}</div>
+                       </div>
+                       <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
+                       <div class="mb-2" *ngIf="(currentItem()?.multipage_detail||[]).length">
+                         <div class="small text-muted">Fragments</div>
+                         <ul class="mb-2">
+                           <li *ngFor="let f of (currentItem()?.multipage_detail||[])">
+                             <button type="button" class="btn btn-xs btn-light border py-0 px-1 me-2" (click)="gotoPage(f.page_number)">p{{ f.page_number }}</button>
+                             <span>{{ f.value }}</span>
+                             <span class="text-muted small" *ngIf="f.post_processing_value"> → {{ f.post_processing_value }}</span>
+                           </li>
+                         </ul>
+                       </div>
                     </div>
                     <div *ngSwitchCase="'summary'">
                        <div class="mb-2"><span class="small text-muted">Summary</span><div style="white-space: pre-wrap;">{{ currentItem()?.value }}</div></div>
+                       <div class="mb-2" *ngIf="(currentItem()?.related_fields||[]).length">
+                         <span class="small text-muted">Related fields</span>
+                         <div class="mt-1 d-flex flex-wrap gap-1">
+                           <span class="badge bg-light text-dark border" *ngFor="let rf of currentItem()?.related_fields">{{ rf }}</span>
+                         </div>
+                       </div>
+                       <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
                     </div>
                     <div *ngSwitchCase="'bullet-points'">
                       <div class="mb-2"><span class="small text-muted">Points</span></div>
                       <ul class="mb-2">
-                        <li *ngFor="let p of (currentItem()?.value || [])">{{ p.value }} <span class="text-muted small">(p{{ p.page_number }})</span></li>
+                        <li *ngFor="let p of (currentItem()?.value || [])">
+                          <button type="button" class="btn btn-xs btn-light border py-0 px-1 me-2" (click)="gotoPage(p.page_number)">p{{ p.page_number }}</button>
+                          <span>{{ p.value }}</span>
+                          <span class="text-muted small" *ngIf="p.post_processing_value"> → {{ p.post_processing_value }}</span>
+                        </li>
                       </ul>
+                      <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
                     </div>
                     <div *ngSwitchCase="'checkbox'">
                       <div class="mb-2"><span class="small text-muted">Selections</span></div>
                       <ul class="mb-2">
-                        <li *ngFor="let p of (currentItem()?.value || [])">{{ p.value }} <span class="text-muted small">(p{{ p.page_number }})</span></li>
+                        <li *ngFor="let p of (currentItem()?.value || [])">
+                          <button type="button" class="btn btn-xs btn-light border py-0 px-1 me-2" (click)="gotoPage(p.page_number)">p{{ p.page_number }}</button>
+                          <span>{{ p.value }}</span>
+                          <span class="text-muted small" *ngIf="p.post_processing_value"> → {{ p.post_processing_value }}</span>
+                        </li>
                       </ul>
+                      <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
                     </div>
                     <div *ngSwitchCase="'table'">
-                      <div class="mb-2"><span class="small text-muted">Rows</span></div>
+                      <div class="mb-2"><span class="small text-muted">Table</span></div>
                       <div class="table-responsive">
                         <table class="table table-sm table-bordered mb-0">
+                          <thead>
+                            <tr>
+                              <th *ngFor="let h of tableHeaders()">{{ h }}</th>
+                            </tr>
+                          </thead>
                           <tbody>
-                            <tr *ngFor="let row of (currentItem()?.value || []).slice(0, 10)">
-                              <td *ngFor="let cell of row">{{ cell }}</td>
+                            <tr *ngFor="let rv of tablePreviewRows()">
+                              <td *ngFor="let cell of rv">{{ cell }}</td>
                             </tr>
                           </tbody>
                         </table>
                         <div class="small text-muted mt-1">Showing up to 10 rows</div>
                       </div>
+                      <div class="mb-2" *ngIf="(currentItem()?.multipage_detail||[]).length">
+                        <span class="small text-muted">Row fragments</span>
+                        <ul class="mb-2">
+                          <li *ngFor="let rf of (currentItem()?.multipage_detail||[])">
+                            <button type="button" class="btn btn-xs btn-light border py-0 px-1 me-2" (click)="gotoPage(rf.page_number)">p{{ rf.page_number }}</button>
+                            <span>#{{ rf.index }}</span>
+                          </li>
+                        </ul>
+                      </div>
+                      <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
                     </div>
                     <div *ngSwitchDefault>
                       <pre class="mb-0">{{ currentItem() | json }}</pre>
@@ -690,5 +737,52 @@ export class AppComponent {
       this.pdfIframeVisible.set(false);
       setTimeout(() => this.pdfIframeVisible.set(true), 25);
     }
+  }
+
+  private getTableColumns(it: any): string[] {
+    if (!it) return [];
+    const cols: string[] = Array.isArray(it.columns) && it.columns.length ? it.columns.slice() : [];
+    if (cols.length) return cols;
+    // Derive from first few rows
+    const rows = Array.isArray(it.value) ? it.value.slice(0, 10) : [];
+    const indexSet = new Set<number>();
+    const nameByIndex = new Map<number, string>();
+    for (const row of rows) {
+      const cells = Array.isArray(row?.cells) ? row.cells : [];
+      for (const c of cells) {
+        const idx = Number(c?.col);
+        if (!isNaN(idx)) {
+          indexSet.add(idx);
+          if (c?.col_name && !nameByIndex.has(idx)) nameByIndex.set(idx, String(c.col_name));
+        }
+      }
+    }
+    const ordered = Array.from(indexSet).sort((a:number,b:number)=>a-b);
+    return ordered.map(i => nameByIndex.get(i) || `col_${i}`);
+  }
+  tableHeaders(): string[] { return this.getTableColumns(this.currentItem()); }
+  private rowToValues(it: any, row: any, headers: string[]): string[] {
+    const cells = Array.isArray(row?.cells) ? row.cells : [];
+    // Build a map from header name to value; prefer exact col_name match, fallback by col index
+    const byColIndex = new Map<number, string>();
+    const byColName = new Map<string, string>();
+    for (const c of cells) {
+      const idx = Number(c?.col);
+      if (!isNaN(idx)) byColIndex.set(idx, String(c?.value ?? ''));
+      const nm = c?.col_name; if (nm) byColName.set(String(nm), String(c?.value ?? ''));
+    }
+    const values: string[] = [];
+    headers.forEach((h, i) => {
+      let v = byColName.get(h);
+      if (v === undefined) v = byColIndex.get(i+1);
+      values.push(v ?? '');
+    });
+    return values;
+  }
+  tablePreviewRows(): string[][] {
+    const it = this.currentItem();
+    const headers = this.getTableColumns(it);
+    const rows = Array.isArray(it?.value) ? it.value.slice(0, 10) : [];
+    return rows.map((r:any)=>this.rowToValues(it, r, headers));
   }
 }
