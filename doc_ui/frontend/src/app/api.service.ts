@@ -45,4 +45,10 @@ export class ApiService {
     form.append('config_json', JSON.stringify(configJson));
     return this.http.post(`${this.base}/perform_de`, form);
   }
+
+  // Added helper to load a local JSON placed in the frontend `assets/` folder (useful for testing)
+  getLocalOutput(name: string): Observable<any> {
+    return this.http.get(`/assets/${name}`);
+  }
+
 }

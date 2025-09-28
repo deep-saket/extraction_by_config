@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from './api.service';
 import { SafeUrlPipe } from './safe-url.pipe';
+import { HttpClientModule } from '@angular/common/http';
 
 interface ResultTile { field_name: string; value: string; pages: string; }
 interface FormItem {
@@ -15,7 +16,7 @@ interface FormItem {
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [CommonModule, FormsModule, SafeUrlPipe],
+  imports: [CommonModule, FormsModule, SafeUrlPipe, HttpClientModule],
   template: `
     <div class="container py-3">
       <div class="d-flex align-items-center justify-content-between mb-3">
@@ -24,6 +25,7 @@ interface FormItem {
           <span class="badge bg-success" *ngIf="healthOk()">Backend: OK</span>
           <span class="badge bg-danger" *ngIf="!healthOk()">Backend: Down</span>
           <span class="badge bg-warning text-dark" *ngIf="schemaChanged()">Schema changed – reload</span>
+          <button class="btn btn-sm btn-outline-secondary" (click)="loadLocalOutput()">Load demo output</button>
         </div>
       </div>
 
@@ -407,7 +409,24 @@ interface FormItem {
                       <div class="mb-2"><span class="small text-muted">Key</span><div>{{ currentItem()?.key }}</div></div>
                     </div>
                     <div *ngSwitchCase="'table'">
-                      <div class="mb-2"><span class="small text-muted">Table</span></div>
+                      <div class="mb-2 d-flex justify-content-between align-items-center">
+                        <div><span class="small text-muted">Table</span></div>
+                        <div class="d-flex align-items-center gap-2">
+                          <div class="btn-group btn-group-sm" role="group">
+                            <button class="btn btn-outline-secondary" (click)="prevTablePage()" [disabled]="tablePageIndex()===0">Prev</button>
+                            <button class="btn btn-outline-secondary" (click)="nextTablePage()" [disabled]="tablePageIndex() >= totalTablePages()-1">Next</button>
+                          </div>
+                          <div class="small text-muted">Page {{ tablePageIndex()+1 }} / {{ totalTablePages() }}</div>
+                          <select class="form-select form-select-sm" style="width: auto;" [ngModel]="tablePageSize()" (ngModelChange)="onTablePageSizeChange($event)">
+                            <option [value]="5">5</option>
+                            <option [value]="10">10</option>
+                            <option [value]="25">25</option>
+                            <option [value]="50">50</option>
+                          </select>
+                          <button class="btn btn-sm btn-outline-primary" (click)="exportTableCSV()">Export CSV</button>
+                        </div>
+                      </div>
+                      
                       <div class="table-responsive">
                         <table class="table table-sm table-bordered mb-0">
                           <thead>
@@ -416,13 +435,13 @@ interface FormItem {
                             </tr>
                           </thead>
                           <tbody>
-                            <tr *ngFor="let rv of tablePreviewRows">
+                            <tr *ngFor="let rv of paginatedTableRows()">
                               <td *ngFor="let cell of rv">{{ cell }}</td>
                             </tr>
                           </tbody>
                         </table>
-                        <div class="small text-muted mt-1">Showing up to 10 rows</div>
                       </div>
+                      
                       <div class="mb-2" *ngIf="(currentItem()?.multipage_detail||[]).length">
                         <span class="small text-muted">Row fragments</span>
                         <ul class="mb-2">
@@ -507,6 +526,9 @@ export class AppComponent {
   navVersion = signal<number>(0);
   expandedTileIndex = signal<number | null>(null);
   drilledParentIndex = signal<number | null>(null);
+  // Pagination state for detailed table view
+  tablePageSize = signal<number>(10);
+  tablePageIndex = signal<number>(0);
 
   constructor(private api: ApiService) { this.init(); }
 
@@ -901,7 +923,7 @@ export class AppComponent {
     const ordered = Array.from(indexSet).sort((a:number,b:number)=>a-b);
     return ordered.map(i => nameByIndex.get(i) || `col_${i}`);
   }
-  get tableHeaders(): string[] { return this.getTableColumns(this.currentItem()); }
+  get tableHeaders(): string[] { return [...this.getTableColumns(this.currentItem()), 'Page']; }
   private rowToValues(it: any, row: any, headers: string[]): string[] {
      const cells = Array.isArray(row?.cells) ? row.cells : [];
      const byColIndex = new Map<number, string>();
@@ -912,17 +934,84 @@ export class AppComponent {
        const nm = c?.col_name; if (nm) byColName.set(String(nm), String(c?.value ?? ''));
      }
      const values: string[] = [];
-     headers.forEach((h, i) => {
-       let v = byColName.get(h);
-       if (v === undefined) v = byColIndex.get(i+1);
-       values.push(v ?? '');
-     });
+    headers.forEach((h, i) => {
+      if (h === 'Page') {
+        // Page is not a cell; take it from row.page_number
+        values.push(row && row.page_number !== undefined && row.page_number !== null ? String(row.page_number) : '');
+        return;
+      }
+      let v = byColName.get(h);
+      if (v === undefined) v = byColIndex.get(i+1);
+      values.push(v ?? '');
+    });
      return values;
    }
   get tablePreviewRows(): string[][] {
     const it = this.currentItem();
-    const headers = this.getTableColumns(it);
+    const headers = this.tableHeaders; // include the 'Page' column
     const rows = Array.isArray(it?.value) ? it.value.slice(0, 10) : [];
     return rows.map((r:any)=>this.rowToValues(it, r, headers));
   }
+
+  // Return all table rows (as arrays of cell strings) for the current item
+  getAllTableRows(): string[][] {
+    const it = this.currentItem(); if (!it) return [];
+    const headers = this.tableHeaders;
+    const rows = Array.isArray(it?.value) ? it.value : [];
+    return rows.map((r:any)=>this.rowToValues(it, r, headers));
+  }
+
+  totalTablePages(): number {
+    const all = this.getAllTableRows();
+    const size = Math.max(1, Number(this.tablePageSize()));
+    return Math.max(1, Math.ceil(all.length / size));
+  }
+
+  paginatedTableRows(): string[][] {
+    const all = this.getAllTableRows();
+    const size = Math.max(1, Number(this.tablePageSize()));
+    const idx = Math.max(0, Number(this.tablePageIndex()));
+    const start = idx * size;
+    return all.slice(start, start + size);
+  }
+
+  prevTablePage() {
+    const idx = this.tablePageIndex();
+    if (idx > 0) this.tablePageIndex.set(idx - 1);
+  }
+  nextTablePage() {
+    const idx = this.tablePageIndex();
+    const last = this.totalTablePages() - 1;
+    if (idx < last) this.tablePageIndex.set(idx + 1);
+  }
+  onTablePageSizeChange(size: number) {
+    this.tablePageSize.set(Number(size));
+    this.tablePageIndex.set(0); // reset to first page
+  }
+
+  // Export all table rows as CSV (Excel-friendly). Use full table rather than only current page.
+  exportTableCSV() {
+    const it = this.currentItem(); if (!it) return;
+    const headers = this.tableHeaders;
+    const rows = this.getAllTableRows();
+    if (!rows.length) return;
+    const csvRows: string[] = [];
+    csvRows.push(headers.map((h: any) => '"' + String(h).replace(/"/g, '""') + '"').join(','));
+    for (const r of rows) csvRows.push((r as any[]).map((c: any) => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(','));
+    const blob = new Blob([csvRows.join('\r\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a'); a.href = url; a.download = ((it.field_name||'table').replace(/[^a-z0-9_\-]/gi,'_')) + '.csv'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+  }
+
+  // Load a demo JSON result from frontend assets (useful when backend isn't available)
+  loadLocalOutput() {
+    this.api.getLocalOutput('dummy_statement.json').subscribe({
+      next: (r: any) => {
+        const payload = (r && Array.isArray(r)) ? r : (r && r.result) ? r.result : r;
+        this.onExtractionDone(payload);
+      },
+      error: (e: any) => this.onExtractionError(e)
+    });
+  }
+
 }
