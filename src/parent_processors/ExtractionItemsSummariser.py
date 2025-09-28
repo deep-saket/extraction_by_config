@@ -33,7 +33,12 @@ class ExtractionItemsSummariser(CallableComponent):
         parent_contexts = {}
         for parent_name in extraction_item.parent:
             resp = ExtractionState.get_response_by_field_name(parent_name)
+            if not resp:
+                continue
             parent_contexts[resp.root.field_name] = resp.root.value
+
+        if not parent_contexts:
+            return None
 
         # Build prompt using PromptBuilder
         schema = SummaryGeneration.model_json_schema()

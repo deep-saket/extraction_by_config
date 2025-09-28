@@ -907,9 +907,33 @@ export class AppComponent {
     if (!it) return [];
     const cols: string[] = Array.isArray(it.columns) && it.columns.length ? it.columns.slice() : [];
     if (cols.length) return cols;
-    const rows = Array.isArray(it.value) ? it.value.slice(0, 10) : [];
+    const rows = Array.isArray(it.value) ? it.value.slice(0, 50) : [];
     const indexSet = new Set<number>();
     const nameByIndex = new Map<number, string>();
+
+    // If the first logical row looks like a header (row===1 and has string labels), prefer it
+    const headerRow = rows.find((r:any) => r && (r.row === 1 || r.row === '1'));
+    if (headerRow && Array.isArray(headerRow.cells) && headerRow.cells.length) {
+      let hasText = false;
+      for (const c of headerRow.cells) {
+        const idx = Number(c?.col);
+        const val = c?.value;
+        if (!isNaN(idx)) {
+          indexSet.add(idx);
+          if (val !== undefined && val !== null && String(val).trim() !== '') {
+            nameByIndex.set(idx, String(val));
+            if (String(val).trim().length > 0) hasText = true;
+          }
+        }
+      }
+      // If headerRow appears valid, return names in index order
+      if (hasText) {
+        const ordered = Array.from(indexSet).sort((a:number,b:number)=>a-b);
+        return ordered.map(i => nameByIndex.get(i) || `col_${i}`);
+      }
+    }
+
+    // Fallback: infer columns from any row cells by index and optional col_name
     for (const row of rows) {
       const cells = Array.isArray(row?.cells) ? row.cells : [];
       for (const c of cells) {
@@ -1008,6 +1032,7 @@ export class AppComponent {
     this.api.getLocalOutput('dummy_statement.json').subscribe({
       next: (r: any) => {
         const payload = (r && Array.isArray(r)) ? r : (r && r.result) ? r.result : r;
+        console.log('loadLocalOutput: payload length=', Array.isArray(payload)?payload.length:0, payload);
         this.onExtractionDone(payload);
       },
       error: (e: any) => this.onExtractionError(e)
