@@ -115,6 +115,28 @@ interface FormItem {
                   </div>
                 </div>
 
+                <div *ngIf="configMode()==='create'" class="border rounded p-3 mb-3 bg-light-subtle">
+                  <div class="d-flex flex-column flex-lg-row align-items-lg-end justify-content-between gap-3">
+                    <div>
+                      <div class="fw-semibold">Auto-generate config</div>
+                      <div class="small text-muted">Let the VLM inspect the PDF and propose ExtractionItems (optional).</div>
+                    </div>
+                    <div class="d-flex flex-wrap gap-2 align-items-end">
+                      <div class="small">
+                        <label class="form-label small mb-1">Max pages (optional)</label>
+                        <input type="number" min="1" class="form-control form-control-sm" [ngModel]="autoConfigMaxPages()" (ngModelChange)="onAutoConfigMaxPagesChange($event)" placeholder="All" />
+                      </div>
+                      <button class="btn btn-sm btn-primary" type="button" (click)="generateAutoConfig()" [disabled]="autoConfigBusy() || !file()">Generate</button>
+                    </div>
+                  </div>
+                  <div class="mt-2 small">
+                    <span *ngIf="autoConfigBusy()" class="text-muted">Generating config…</span>
+                    <span *ngIf="!autoConfigBusy() && autoConfigMsg()" class="text-success">{{ autoConfigMsg() }}</span>
+                    <span *ngIf="!autoConfigBusy() && autoConfigError()" class="text-danger">{{ autoConfigError() }}</span>
+                    <span *ngIf="!file()" class="text-muted d-block">Upload a PDF to enable auto-generation.</span>
+                  </div>
+                </div>
+
                 <div *ngIf="configEditorText || formMode()" class="d-flex justify-content-between align-items-center mb-2">
                   <div class="form-check form-switch">
                     <input class="form-check-input" type="checkbox" id="formModeSwitch" [checked]="formMode()" (change)="onFormModeChange($event)">
@@ -233,6 +255,7 @@ interface FormItem {
                     <div class="d-flex gap-2 align-items-center mt-3">
                       <button class="btn btn-outline-primary" (click)="validateConfig()">Validate</button>
                       <button class="btn btn-outline-secondary" (click)="saveConfigAs()" [disabled]="!isConfigValid()">Save As…</button>
+                      <button class="btn btn-outline-success" type="button" (click)="exportConfig()" [disabled]="!isConfigValid()">Export & Use</button>
                       <span *ngIf="validationMsg()" class="ms-auto" [class.text-success]="isConfigValid()" [class.text-danger]="!isConfigValid()">{{ validationMsg() }}</span>
                     </div>
 
@@ -258,6 +281,7 @@ interface FormItem {
                     <div class="d-flex gap-2 align-items-center mb-2">
                       <button class="btn btn-outline-primary" (click)="validateConfig()">Validate</button>
                       <button class="btn btn-outline-secondary" (click)="saveConfigAs()" [disabled]="!isConfigValid()">Save As…</button>
+                      <button class="btn btn-outline-success" type="button" (click)="exportConfig()" [disabled]="!isConfigValid()">Export & Use</button>
                       <span *ngIf="validationMsg()" class="ms-auto" [class.text-success]="isConfigValid()" [class.text-danger]="!isConfigValid()">{{ validationMsg() }}</span>
                     </div>
 
@@ -518,6 +542,10 @@ export class AppComponent {
   validationMsg = signal<string>('');
   formMode = signal<boolean>(false);
   formItems = signal<FormItem[]>([]);
+  autoConfigBusy = signal<boolean>(false);
+  autoConfigMsg = signal<string>('');
+  autoConfigError = signal<string>('');
+  autoConfigMaxPages = signal<number | null>(null);
 
   pdfPage = signal<number | null>(null);
   selectedIndex = signal<number | null>(null);
@@ -529,6 +557,7 @@ export class AppComponent {
   // Pagination state for detailed table view
   tablePageSize = signal<number>(10);
   tablePageIndex = signal<number>(0);
+  inlineExtractionPreferred = signal<boolean>(true);
 
   constructor(private api: ApiService) { this.init(); }
 
@@ -552,6 +581,10 @@ export class AppComponent {
       this.pdfIframeVisible.set(true);
       this.expandedTileIndex.set(null);
       this.drilledParentIndex.set(null);
+      this.autoConfigBusy.set(false);
+      this.autoConfigMsg.set('');
+      this.autoConfigError.set('');
+      this.inlineExtractionPreferred.set(true);
     }
   }
   goToConfig() { if (this.file()) this.step.set(2); }
@@ -559,7 +592,7 @@ export class AppComponent {
 
   loadSelectedConfig() {
     const cfg = this.selectedConfig(); if (!cfg) return;
-    this.api.getConfig(cfg).subscribe({ next: data => { this.configEditorText = JSON.stringify(data, null, 2); this.formItems.set(this.parseToForm(data)); this.isConfigValid.set(false); this.configErrors.set([]); this.validationMsg.set('Loaded. Validate to check.'); this.formMode.set(false); }, error: () => this.validationMsg.set('Failed to load config') });
+    this.api.getConfig(cfg).subscribe({ next: data => { this.configEditorText = JSON.stringify(data, null, 2); this.formItems.set(this.parseToForm(data)); this.isConfigValid.set(false); this.configErrors.set([]); this.validationMsg.set('Loaded. Validate to check.'); this.formMode.set(false); this.inlineExtractionPreferred.set(false); }, error: () => this.validationMsg.set('Failed to load config') });
   }
 
   startNewConfig() {
@@ -570,6 +603,58 @@ export class AppComponent {
     this.configErrors.set([]);
     this.validationMsg.set('Draft created. Validate to check.');
     this.formMode.set(true);
+    this.inlineExtractionPreferred.set(true);
+  }
+
+  generateAutoConfig() {
+    const pdfFile = this.file();
+    if (!pdfFile) {
+      this.autoConfigError.set('Upload a PDF first to enable auto-generation.');
+      return;
+    }
+    this.autoConfigBusy.set(true);
+    this.autoConfigMsg.set('');
+    this.autoConfigError.set('');
+
+    const maxPages = this.autoConfigMaxPages();
+    this.api.generateAutoConfig(pdfFile, maxPages ?? undefined).subscribe({
+      next: res => {
+        const items = Array.isArray(res?.items) ? res.items : [];
+        if (!items.length) {
+          this.autoConfigError.set('No fields detected. Try increasing the page range or adjust manually.');
+          this.autoConfigBusy.set(false);
+          return;
+        }
+        this.configMode.set('create');
+        this.configEditorText = JSON.stringify(items, null, 2);
+        this.formItems.set(this.parseToForm(items));
+        this.formMode.set(true);
+        this.isConfigValid.set(true);
+        this.configErrors.set([]);
+        this.validationMsg.set('Auto-generated config ready. Review and adjust as needed.');
+        this.autoConfigMsg.set(`Generated ${items.length} fields.`);
+        this.inlineExtractionPreferred.set(true);
+        this.autoConfigBusy.set(false);
+      },
+      error: err => {
+        const message = err?.error?.error || err?.message || 'Failed to generate config.';
+        this.autoConfigError.set(message);
+        this.autoConfigBusy.set(false);
+      }
+    });
+  }
+
+  onAutoConfigMaxPagesChange(value: any) {
+    if (value === null || value === undefined || value === '') {
+      this.autoConfigMaxPages.set(null);
+      return;
+    }
+    const num = Number(value);
+    if (isNaN(num) || num <= 0) {
+      this.autoConfigMaxPages.set(null);
+      return;
+    }
+    this.autoConfigMaxPages.set(Math.floor(num));
   }
 
   validateConfig() {
@@ -585,21 +670,62 @@ export class AppComponent {
     this.api.saveConfig(name, parsed).subscribe({ next: r => { if (r.ok) { this.validationMsg.set(`Saved as ${name}`); this.api.listConfigs().subscribe({ next: lst => this.configs.set(lst.configs) }); } else { this.validationMsg.set('Save failed'); } }, error: () => this.validationMsg.set('Save failed') });
   }
 
+  exportConfig() {
+    if (this.formMode()) this.configEditorText = JSON.stringify(this.formItems(), null, 2);
+    let parsed: any;
+    try { parsed = JSON.parse(this.configEditorText || ''); }
+    catch { this.isConfigValid.set(false); this.validationMsg.set('Invalid JSON'); this.inlineExtractionPreferred.set(true); return; }
+
+    const filename = this.buildExportFileName();
+    this.api.saveConfig(filename, parsed).subscribe({
+      next: res => {
+        if (res.ok) {
+          this.validationMsg.set(`Exported as ${filename}. Using saved config for extraction.`);
+          this.inlineExtractionPreferred.set(false);
+          this.selectedConfig.set(filename);
+          this.configMode.set('select');
+          this.configErrors.set([]);
+          this.api.listConfigs().subscribe({
+            next: lst => {
+              const configs = lst.configs.includes(filename) ? lst.configs : [...lst.configs, filename];
+              const unique = Array.from(new Set(configs));
+              this.configs.set(unique.sort());
+            },
+          });
+        } else {
+          this.validationMsg.set('Export failed');
+        }
+      },
+      error: () => this.validationMsg.set('Export failed')
+    });
+  }
+
   proceedToExtract() {
     this.step.set(3);
     const f = this.file(); if (!f) return;
-    let useInline = this.isConfigValid();
+    let useInline = this.inlineExtractionPreferred() && this.isConfigValid();
     if (useInline) {
       if (this.formMode()) this.configEditorText = JSON.stringify(this.formItems(), null, 2);
       let parsed: any; try { parsed = JSON.parse(this.configEditorText || ''); } catch { useInline = false; }
+      if (!useInline) this.inlineExtractionPreferred.set(false);
       if (useInline) { this.api.performDEWithInlineConfig(f, parsed).subscribe({ next: r => this.onExtractionDone(r), error: e => this.onExtractionError(e) }); return; }
     }
     const cfg = this.selectedConfig(); if (!cfg) { this.onExtractionError({ message: 'No config selected' }); return; }
+    this.inlineExtractionPreferred.set(false);
     this.api.performDE(f, cfg).subscribe({ next: r => this.onExtractionDone(r), error: e => this.onExtractionError(e) });
   }
 
   private onExtractionDone(r: any) { this.result.set(r); this.tiles.set(this.normalizeResults(r)); this.step.set(4); }
   private onExtractionError(e: any) { this.result.set({ error: e?.message || 'Extraction failed' }); this.tiles.set([]); this.step.set(4); }
+
+  private buildExportFileName(): string {
+    const pdf = this.file();
+    const rawBase = pdf?.name ? pdf.name.replace(/\.[^.]+$/, '') : 'auto_config';
+    const slug = rawBase.replace(/[^A-Za-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'auto_config';
+    const iso = new Date().toISOString();
+    const stamp = iso.replace(/[:.]/g, '-').replace('T', '-').replace('Z', '');
+    return `${slug}_auto_${stamp}.json`;
+  }
 
   private normalizeResults(r: any): ResultTile[] {
     if (!Array.isArray(r)) return [];
@@ -643,9 +769,11 @@ export class AppComponent {
   resetAll() {
     const url = this.pdfUrl(); if (url) URL.revokeObjectURL(url);
     this.step.set(1); this.configMode.set('select');
+    this.inlineExtractionPreferred.set(true);
     this.file.set(null); this.fileName.set(''); this.pdfUrl.set('');
     this.configEditorText = ''; this.isConfigValid.set(false); this.configErrors.set([]); this.validationMsg.set('');
     this.result.set(null); this.tiles.set([]);
+    this.autoConfigBusy.set(false); this.autoConfigMsg.set(''); this.autoConfigError.set(''); this.autoConfigMaxPages.set(null);
   }
 
   parseToForm(data: any): FormItem[] {
@@ -666,15 +794,17 @@ export class AppComponent {
   addField() {
     const arr = [...this.formItems()];
     arr.push({ field_name: 'NewField', description: '', type: 'key-value', probable_pages: [], multipage_value: false, multiline_value: false, search_keys: [], scope: undefined, section_name: undefined, parent: [], extra: {}, table_header: [] });
-    this.formItems.set(arr); this.configEditorText = JSON.stringify(arr, null, 2);
+    this.formItems.set(arr);
+    this.onFormChange();
   }
 
-  removeField(idx: number) { const arr = [...this.formItems()]; arr.splice(idx, 1); this.formItems.set(arr); this.configEditorText = JSON.stringify(arr, null, 2); }
-  onFormChange() { this.configEditorText = JSON.stringify(this.formItems(), null, 2); this.isConfigValid.set(false); this.validationMsg.set('Edited. Validate to check.'); }
+  removeField(idx: number) { const arr = [...this.formItems()]; arr.splice(idx, 1); this.formItems.set(arr); this.onFormChange(); }
+  onFormChange() { this.configEditorText = JSON.stringify(this.formItems(), null, 2); this.isConfigValid.set(false); this.validationMsg.set('Edited. Validate to check.'); this.inlineExtractionPreferred.set(true); }
   onTypeChange(i: number, newType: FormItem['type']) { this.formItems()[i].type = newType; if (newType === 'table') this.formItems()[i].multiline_value = true; this.onFormChange(); }
   onFormModeChange(evt: Event) {
     const checked = (evt.target as HTMLInputElement).checked;
     this.formMode.set(checked);
+    this.inlineExtractionPreferred.set(true);
     if (checked) {
       this.formItems.set(this.parseToForm(null));
     } else {

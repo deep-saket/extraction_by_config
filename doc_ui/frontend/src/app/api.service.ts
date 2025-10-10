@@ -51,4 +51,13 @@ export class ApiService {
     return this.http.get(`/assets/${name}`);
   }
 
+  generateAutoConfig(file: File, maxPages?: number | null): Observable<{ items: any[]; count: number }> {
+    const form = new FormData();
+    form.append('pdf', file);
+    if (typeof maxPages === 'number' && !isNaN(maxPages)) {
+      form.append('max_pages', String(maxPages));
+    }
+    return this.http.post<{ items: any[]; count: number }>(`${this.base}/auto_config/generate`, form);
+  }
+
 }

@@ -7,11 +7,12 @@ import hashlib
 import json
 import os
 import shutil
-from typing import Dict, Any
+from typing import Any, Dict, Optional
 from pydantic import ValidationError
 
 # Import parser singleton and Pydantic models for schema exposure
 from doc_ui.backend.shared.parser_wrapper import get_parser
+from doc_ui.backend.shared.auto_config_wrapper import get_auto_config_generator
 from extraction_io.ExtractionItems import ExtractionItem, ExtractionItems
 from extraction_io.ExtractionOutputs import (
     KeyValueOutput,
@@ -79,6 +80,25 @@ async def perform_de(pdf: UploadFile, config_name: str = Form(None), config_json
         with output_path.open("r") as f:
             result = json.load(f)
         return JSONResponse(content=result)
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
+
+
+@app.post("/auto_config/generate")
+async def auto_config_generate(pdf: UploadFile, max_pages: Optional[int] = Form(None)):
+    dataset_path = DATASET_DIR / pdf.filename
+
+    with dataset_path.open("wb") as f:
+        shutil.copyfileobj(pdf.file, f)
+
+    try:
+        generator = get_auto_config_generator()
+        items = generator.generate(
+            pdf_path=str(dataset_path),
+            output_config_path=None,
+            max_pages=max_pages,
+        )
+        return JSONResponse(content={"items": items, "count": len(items)})
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 

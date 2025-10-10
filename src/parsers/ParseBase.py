@@ -96,7 +96,18 @@ class ParseBase(CallableComponent):
 
             if not self.item.multipage_value:
                 break
-            elif not page_result.get("multipage_value"):
+
+            continue_flag = True
+            if isinstance(page_result, dict):
+                continue_flag = bool(page_result.get("multipage_value"))
+            elif isinstance(page_result, list):
+                # If any fragment reports multipage, continue; otherwise stop.
+                continue_flag = any(
+                    isinstance(fragment, dict) and fragment.get("multipage_value")
+                    for fragment in page_result
+                )
+
+            if not continue_flag:
                 break
 
         return all_results

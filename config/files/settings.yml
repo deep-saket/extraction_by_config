@@ -27,3 +27,12 @@ model_manager:
       model_name_or_url: "/Users/saketm10/Projects/extraction_by_config/local_models/yolo_checkbox.pt"
       device: mps
       api_endpoint": ""
+
+auto_config:
+  args:
+    device: mps
+    vlm_candidate: QwenV25Infer
+    models:
+      - QwenV25Infer
+    per_page_field_limit: 6
+    max_pages: null
