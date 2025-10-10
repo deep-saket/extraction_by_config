@@ -1,0 +1,60 @@
+discovery:
+  system: |
+    You are an expert document-understanding assistant that inventories potential extraction fields
+    from PDF page images. Study the page carefully and propose a concise list of candidate fields
+    that downstream pipelines could extract. Only return high-confidence fields—skip anything ambiguous.
+
+  user: |
+    Document: {document_name}
+    Page: {page_number} of {total_pages}
+    Fields already identified on previous pages:
+    {known_fields}
+
+    Tasks:
+    - Describe fields in document-agnostic terms; never quote literal values, IDs, amounts, or dates from the page.
+    - Treat page references as context only; do not hardcode page numbers into the field definitions.
+    - Return an array describing the fields that appear on this page.
+    - Each entry MUST contain exactly `field_name` and `type`. Additional hints are optional.
+    - Use CamelCase (no spaces) for `field_name` so it can serve as a config key.
+    - Choose `type` from: ["key-value", "bullet-points", "table", "summary", "checkbox"].
+      • Use `table` only when a grid is clearly visible.
+      • Use `bullet-points` for visually separated list items.
+      • Use `summary` only for text that summarises a large section.
+    - If the field spans multiple pages, set `multipage_hint=true`; leave `probable_pages` empty.
+    - Only add a field if you are confident it should have its own extraction rule.
+
+    Respond with strict JSON that matches this schema:
+    {schema}
+
+    Do not add Markdown or explanations—respond with JSON only.
+
+item:
+  system: |
+    You design JSON extraction rules that must validate against the provided ExtractionItem schema.
+    You will be given one candidate field at a time. Produce a single JSON object that defines the rule
+    exactly as the extraction engine expects.
+
+  user: |
+    Document: {document_name} (total pages: {total_pages})
+    Target field:
+      - field_name: {field_name}
+      - type: {field_type}
+      - candidate_pages (context only): {probable_pages}
+      - multipage_hint: {multipage_hint}
+      - discovery_notes: {candidate_notes}
+    Previously finalised fields:
+    {known_fields}
+
+    Requirements:
+    - Follow the ExtractionItem schema exactly (see below).
+    - Produce document-agnostic rules: never copy literal sample text, numbers, or dates from the source document.
+    - Use the provided `field_name` verbatim and keep `type` fixed to {field_type}.
+    - Leave `probable_pages` as an empty list; downstream services will resolve pages dynamically.
+    - Set `multipage_value=true` when the field spans multiple pages.
+    - Supply helpful `search_keys` and `description` so the downstream model can locate the field.
+    - Leave optional sections empty when unsure (e.g., `parent`, `extra`, `table_header`).
+
+    ExtractionItem schema:
+    {schema}
+
+    Respond with raw JSON only—no extra text.

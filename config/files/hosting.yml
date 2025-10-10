@@ -1,0 +1,32 @@
+# Hosting configuration for model files and lightweight model hosts
+# Keys should match model identifiers used in your settings (e.g. QwenV25Infer, ColPaliInfer, YOLOCheckBox)
+# Fields:
+#   host: hostname (usually localhost)
+#   port: port number to serve files / run lightweight host
+#   serve_dir: relative path (from repo root) or absolute path to directory to serve for that model
+#   api_endpoint: optional endpoint path (if a service exposes an HTTP API)
+
+QwenV25Infer:
+  host: localhost
+  port: 9001
+  serve_dir: host/models/QwenV25Infer
+  api_endpoint: ""
+
+ColPaliInfer:
+  host: localhost
+  port: 9002
+  serve_dir: host/models/ColPaliInfer
+  api_endpoint: ""
+
+YOLOCheckBox:
+  host: localhost
+  port: 9003
+  serve_dir: host/models/YOLOCheckBox
+  api_endpoint: ""
+
+# Global defaults (optional)
+_defaults:
+  host: localhost
+  base_port: 9000
+  serve_root: host/models
+

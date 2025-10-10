@@ -1,0 +1,67 @@
+# Example configuration for training Qwen2.5-VL on extraction samples.
+
+data:
+  # Hugging Face processor to pair with the Qwen checkpoint.
+  processor_name: "Qwen/Qwen2.5-VL-3B-Instruct"
+
+  # Text/token limits for inputs and targets.
+  text:
+    max_input_tokens: 2048
+    max_target_tokens: 1024
+
+  # Dataset structure.
+  dataset:
+    root_dir: "/path/to/dataset"
+    sample_ext: ".json"
+    image_key: "page_image"
+    extraction_item_key: "extraction_item"
+    extraction_output_key: "extraction_output"
+    last_page_value_key: "last_page_value"
+
+  # DataLoader parameters.
+  batch_size: 1
+  num_workers: 0
+  shuffle: true
+  train_split: 0.8
+  val_split: 0.1
+  test_split: 0.1
+
+model:
+  pretrained_name: "Qwen/Qwen2.5-VL-3B-Instruct"
+  device: "mps"
+  dtype: "float16"
+  gradient_checkpointing: true
+
+training:
+  mode: "supervised"  # or "grpo" once supervised warm-up is complete.
+  seed: 42
+  device: "mps"
+  epochs: 3
+  lr: 5.0e-5
+  weight_decay: 0.0
+  gradient_clip: 1.0
+  checkpoint_dir: "./checkpoints"
+
+rl:
+  kl_beta: 0.1
+  reward_scale: 1.0
+  ignore_index: -100
+  baseline_momentum: 0.95
+
+logging:
+  dir: "./logs"
+
+inference:
+  device: "mps"
+  log_dir: "./logs"
+  generation:
+    max_new_tokens: 512
+    do_sample: false
+    temperature: 0.7
+    top_p: 0.9
+  output_suffix: "_pred"
+
+evaluation:
+  device: "mps"
+  log_dir: "./logs"
+
