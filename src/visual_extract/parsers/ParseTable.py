@@ -1,4 +1,4 @@
-from src.parsers.ParseBase import ParseBase
+from src.visual_extract.parsers.ParseBase import ParseBase
 from typing import List, Any, Dict, Set, Tuple
 from extraction_io.generation_utils import TableGeneration
 from common import ExtractionState

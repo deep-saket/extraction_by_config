@@ -10,7 +10,7 @@ from models import ModelManager
 from common import ExtractionState, BaseComponent
 from extraction_io.ExtractionItems import ExtractionItems, ExtractionItem
 from extraction_io.ExtractionOutputs import ExtractionOutput, ExtractionOutputs
-from src.helper import PromptBuilder, VLMProcessor, PageFinder, ParentProcessor, LMProcessor, ResultBuilderFactory
+from src.visual_extract.helper import PromptBuilder, VLMProcessor, PageFinder, ParentProcessor, LMProcessor, ResultBuilderFactory
 from config.loader import settings
 
 load_dotenv()
@@ -193,7 +193,7 @@ class Parser(BaseComponent):
         except (ModuleNotFoundError, AttributeError):
             # Fallback to ParseBase (which will error if no _process_page is defined)
             self.logger.exception(f"Not able to instantiate parser for type '{extype}'. Using ParseBase instead.")
-            from src.parsers.ParseBase import ParseBase
+            from src.visual_extract.parsers import ParseBase
             parser_cls = ParseBase
 
         return parser_cls(item, self.vlm_processor, self.prompt_builder, parser_response_model)

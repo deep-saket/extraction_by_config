@@ -2,7 +2,7 @@ from common import CallableComponent, ExtractionState
 import json
 from pydantic import ValidationError
 from common import DirtyJsonParser
-from src.helper.PromptBuilder import PromptBuilder
+from src.visual_extract.helper.PromptBuilder import PromptBuilder
 
 
 class VLMProcessor(CallableComponent):

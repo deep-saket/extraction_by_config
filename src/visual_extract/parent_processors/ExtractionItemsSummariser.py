@@ -1,9 +1,9 @@
 from common import CallableComponent, ExtractionState
 from config.loader import settings
-from src.helper import LMProcessor
-from src.helper.PromptBuilder import PromptBuilder
+from src.visual_extract.helper import LMProcessor
+from src.visual_extract.helper.PromptBuilder import PromptBuilder
 from extraction_io.generation_utils import SummaryGeneration
-import os
+
 
 class ExtractionItemsSummariser(CallableComponent):
     """

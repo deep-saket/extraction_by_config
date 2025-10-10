@@ -113,3 +113,11 @@ Thumbs.db
 output/others
 output
 local_models
+
+src/parser_validation
+SOFTWARE-SERVICE- document_extraction
+
+doc_ui/frontend/.angular
+doc_ui/frontend/dist
+doc_ui/frontend/node_modules
+dataset

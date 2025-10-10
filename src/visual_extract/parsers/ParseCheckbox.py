@@ -4,7 +4,7 @@ from typing import List, Dict, Any
 from PIL import Image
 
 from extraction_io.generation_utils import CheckboxGeneration
-from src.parsers.ParseBase import ParseBase
+from src.visual_extract.parsers.ParseBase import ParseBase
 from common import ExtractionState
 
 class ParseCheckbox(ParseBase):

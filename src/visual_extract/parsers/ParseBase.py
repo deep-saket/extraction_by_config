@@ -3,9 +3,9 @@
 import json
 from typing import Any, Dict, List, Optional
 
-from common import CallableComponent, ExtractionState
+from common import CallableComponent
 from extraction_io.ExtractionItems import ExtractionItem
-from src.helper import ResultBuilderFactory
+from src.visual_extract.helper import ResultBuilderFactory
 
 class ParseBase(CallableComponent):
     """

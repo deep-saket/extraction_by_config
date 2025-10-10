@@ -102,7 +102,7 @@ If you prefer Python code:
 
 ```python
 import json
-from src.Parser import Parser
+from src.visual_extract.Parser import Parser
 
 # 1. Load extraction configuration
 with open("de_config/extraction_fields.json") as f:

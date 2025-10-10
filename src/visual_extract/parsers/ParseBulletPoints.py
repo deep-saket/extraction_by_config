@@ -3,7 +3,7 @@
 from typing import List, Dict, Any
 from PIL import Image
 
-from src.parsers.ParseBase import ParseBase
+from src.visual_extract.parsers.ParseBase import ParseBase
 from common import ExtractionState
 
 class ParseBulletPoints(ParseBase):

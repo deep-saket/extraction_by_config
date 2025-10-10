@@ -1,9 +1,8 @@
-from src.parsers.ParseBase import ParseBase
+from src.visual_extract.parsers.ParseBase import ParseBase
 from extraction_io.ExtractionItems import ExtractionItem
 from common import ExtractionState
 from typing import List, Any
 import copy
-import uuid
 
 
 class ParseSummary(ParseBase):
