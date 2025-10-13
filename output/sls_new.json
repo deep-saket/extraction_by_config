@@ -1,0 +1,42 @@
+[
+  {
+    "field_name": "OrderNumber",
+    "value": "954748",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "The order number listed on the loan policy",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "PolicyNumber",
+    "value": "CL-1998-260044",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "The policy number listed on the loan policy",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "Address",
+    "value": "",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "The property address",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "APN",
+    "value": "426-052-013",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Assessor's Parcel Number",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "EffectiveDate",
+    "value": "",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Effective date of the policy",
+    "multipage_detail": null
+  }
+]

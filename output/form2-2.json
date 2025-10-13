@@ -1,0 +1,118 @@
+[
+  {
+    "field_name": "PolicyNumber",
+    "value": "EC1801479526",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Policy No.",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "CertificateNumber",
+    "value": "",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Certificate No.",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "CompanyTPAID",
+    "value": "EC1801479526-1E",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Company / TPA ID No.",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "InsuredName",
+    "value": "Surapaneni Lakshmi Narayana",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Name of the insured",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "InsuredAddress",
+    "value": "7-98, 1st Floor, Kanpur, Near Penamaluru Police Station.",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Address of the insured",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "HospitalisationReason",
+    "value": [
+      {
+        "value": "Injury",
+        "post_processing_value": null,
+        "page_number": 1,
+        "index": 0
+      }
+    ],
+    "key": "Hospitalisation due to (Fitness / Injury / Maternity)"
+  },
+  {
+    "field_name": "DateOfAdmission",
+    "value": "30-Nov-2018",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Date of admission",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "TimeOfAdmission",
+    "value": "09:15 AM",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Time of admission",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "DateOfDischarge",
+    "value": "28-Dec-2018",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Date of discharge",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "TimeOfDischarge",
+    "value": "09:44 PM",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "Time of discharge",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "InjuryCause",
+    "value": [
+      {
+        "value": "Road Traffic Accident",
+        "post_processing_value": null,
+        "page_number": 1,
+        "index": 0
+      }
+    ],
+    "key": "If injury, give cause (Self-inflicted / Road Traffic Accident / Substance Abuse / Alcohol Consumption)"
+  },
+  {
+    "field_name": "MedicoLegalReported",
+    "value": [
+      {
+        "value": "Yes",
+        "post_processing_value": null,
+        "page_number": 1,
+        "index": 0
+      }
+    ],
+    "key": "Is it medico-legal reported? (Yes / No)"
+  },
+  {
+    "field_name": "MLCReportPoliceLawsNumber",
+    "value": "",
+    "post_processing_value": null,
+    "page_number": 1,
+    "key": "MLC Report & Police Laws No.",
+    "multipage_detail": null
+  }
+]

@@ -1,0 +1,134 @@
+[
+  {
+    "field_name": "PDSDate",
+    "value": "14 July 2021",
+    "post_processing_value": null,
+    "page_number": 3,
+    "key": "Date of this Supplementary Product Disclosure Statement (SPDS)",
+    "multipage_detail": null
+  },
+  {
+    "field_name": "ContentsNotInsured",
+    "value": [
+      {
+        "value": "loose or unset gemstones",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 1
+      },
+      {
+        "value": "plants, trees or shrubs growing in the ground",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 2
+      },
+      {
+        "value": "grass, rocks and soil on your site",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 3
+      },
+      {
+        "value": "building materials or items at your site that are due to be fitted to your home (we provide limited cover for those items under Buildings Insurance — see page 38)",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 4
+      },
+      {
+        "value": "animals",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 5
+      },
+      {
+        "value": "the cost to replace any credit or financial transaction cards",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 6
+      },
+      {
+        "value": "illegal items — this includes illegally downloaded digital media",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 7
+      },
+      {
+        "value": "goods kept for sale, distribution, on display, exhibition or on consignment",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 8
+      },
+      {
+        "value": "stock used in any business, trade or profession",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 9
+      },
+      {
+        "value": "watercraft except for sailboards, canoes, kayaks, and non-motorised surf skis",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 10
+      },
+      {
+        "value": "trailers, caravans, aircraft or aerial devices",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 11
+      },
+      {
+        "value": "vehicles including:",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 12
+      },
+      {
+        "value": "- motor vehicles",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 13
+      },
+      {
+        "value": "- any registrable motorcycles",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 14
+      },
+      {
+        "value": "- any motorcycles greater than 75cc",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 15
+      },
+      {
+        "value": "- ride-on vehicles (for example, motorised golf buggies or carts) except for mobility scooters and ride-on lawnmowers that you only use to mow your lawn.",
+        "post_processing_value": null,
+        "page_number": 21,
+        "index": 16
+      }
+    ],
+    "key": "List of items not insured under Contents Insurance. "
+  },
+  {
+    "field_name": "SummaryDetails1",
+    "value": "loose or unset gemstones, plants, trees or shrubs growing in the ground, grass, rocks and soil on your site, building materials or items at your site that are due to be fitted to your home (limited cover under Buildings Insurance), animals, the cost to replace any credit or financial transaction cards, illegal items (downloaded digital media), goods kept for sale, distribution, on display, exhibition or on consignment, stock used in any business, trade or profession, watercraft except for sailboards, canoes, kayaks, and non-motorised surf skis, trailers, caravans, aircraft or aerial devices, vehicles including motor vehicles, any registrable motorcycles, any motorcycles greater than 75cc, ride-on vehicles (except for mobility scooters and ride-on lawnmowers used to mow your lawn)",
+    "key": "Summarise the fields",
+    "page_range": null,
+    "related_fields": null
+  },
+  {
+    "field_name": "SummaryDetails2",
+    "value": "SGIC Home Insurance Product Disclosure Statement and Policy Booklet (PDS)",
+    "key": "Summarise the fields",
+    "page_range": null,
+    "related_fields": null
+  },
+  {
+    "field_name": "NewField",
+    "value": "Moving into your new home",
+    "post_processing_value": null,
+    "page_number": 40,
+    "key": "",
+    "multipage_detail": null
+  }
+]
