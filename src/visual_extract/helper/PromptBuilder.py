@@ -103,7 +103,7 @@ class PromptBuilder(CallableComponent):
         # 5) Read instructions_detail so we know how to interpret each key
         detail = PromptBuilder._detail
         bool_keys = set(detail["boolean"])                 # e.g. {"multipage_value","multiline_value","single"}
-        list_keys = set(detail["list"])                    # e.g. {"search_keys"}
+        list_keys = set(detail["list"])                    # e.g. {"search_keys","anchor_phrases"}
         option_keys = set(detail["option"]["scope"])       # e.g. {"whole","section","pages","fields","single_value","multi_value"}
 
         instruction_parts = []
@@ -119,6 +119,24 @@ class PromptBuilder(CallableComponent):
                     instruction_parts.append(rendered)
                 else:
                     instruction_parts.append(instr_tpl.format(search_keys=joined))
+
+        # --- Special handling for other list-based instructions (anchor_phrases, region_hint, etc.)
+        for list_key in (list_keys - {"search_keys"}):
+            if list_key in combined_instr:
+                values = override_vars.get(list_key)
+                if values is None:
+                    values = getattr(item, list_key, None) or item.extra.get(list_key, None)
+                if values:
+                    if not isinstance(values, (list, tuple)):
+                        values = [values]
+                    formatted = "\n".join(f"  - {str(val)}" for val in values)
+                    instr_tpl = combined_instr[list_key]
+                    payload = {list_key: formatted}
+                    if isinstance(instr_tpl, dict):
+                        rendered = self._render_from_dict(instr_tpl, item, payload)
+                        instruction_parts.append(rendered)
+                    else:
+                        instruction_parts.append(instr_tpl.format(**payload))
 
         # --- Special handling for table.columns instruction: render columns via instruction fragment if present
         if "columns" in combined_instr:
@@ -141,6 +159,8 @@ class PromptBuilder(CallableComponent):
         # 5.b) Single loop over every key in combined_instr
         for instr_key, instr_val in combined_instr.items():
             if instr_key == "search_keys" or instr_key == "columns":
+                continue
+            if instr_key in list_keys and instr_key != "search_keys":
                 continue
 
             # 5.b.i) If this key is treated as a boolean‐flag

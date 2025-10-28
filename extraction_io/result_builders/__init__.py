@@ -3,3 +3,4 @@ from extraction_io.result_builders.BulletPointsResultBuilder import BulletPoints
 from extraction_io.result_builders.CheckboxResultBuilder import CheckboxResultBuilder
 from extraction_io.result_builders.SummaryResultBuilder import SummaryResultBuilder
 from extraction_io.result_builders.TableResultBuilder import TableResultBuilder
+from extraction_io.result_builders.EntityBlockResultBuilder import EntityBlockResultBuilder

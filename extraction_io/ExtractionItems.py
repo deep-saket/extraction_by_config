@@ -15,9 +15,16 @@ class ExtractionItem(BaseModel):
         default_factory=list,
         description="(Optional) Explicit page numbers to prioritize (1-indexed)."
     )
-    type: Literal["key-value", "bullet-points", "summary", "checkbox", "table"] = Field(
+    type: Literal[
+        "key-value",
+        "bullet-points",
+        "summary",
+        "checkbox",
+        "table",
+        "entity-block"
+    ] = Field(
         ...,
-        description="Operation type: 'key-value', 'bullet-points', 'summary', 'checkbox', or 'table'."
+        description="Operation type: 'key-value', 'bullet-points', 'summary', 'checkbox', 'table', or 'entity-block'."
     )
     # remove table_config; add table_header
     table_header: Optional[List[str]] = Field(
@@ -52,6 +59,33 @@ class ExtractionItem(BaseModel):
         )
     )
 
+    anchor_phrases: Optional[List[str]] = Field(
+        default_factory=list,
+        description=(
+            "Additional literal phrases expected near the target content. "
+            "Used to bias retrieval for entity-style extractions."
+        )
+    )
+    include_bbox: bool = Field(
+        False,
+        description="Request bounding-box coordinates for visual extractions (entity-block only)."
+    )
+    region_hint: Optional[List[str]] = Field(
+        default_factory=list,
+        description=(
+            "Spatial hints (e.g., ['header','left']) for where the value appears. "
+            "Only valid for entity-block extractions."
+        )
+    )
+    entity_type: Optional[List[str]] = Field(
+        default_factory=list,
+        description="For entity-block: expected entity categories (e.g., ['company', 'person'])."
+    )
+    contact_fields: Optional[List[str]] = Field(
+        default_factory=list,
+        description="Expected sub-fields when scope targets contact information (e.g., ['name','phone'])."
+    )
+
     # Single "scope" field used for both summary and checkbox types:
     scope: Optional[
         Literal[
@@ -60,7 +94,19 @@ class ExtractionItem(BaseModel):
             "pages",
             "extraction_items",
             "single_value",
-            "multi_value"
+            "multi_value",
+            "address_block",
+            "currency",
+            "identifier",
+            "number",
+            "date",
+            "email",
+            "signature_block",
+            "contact",
+            "person",
+            "organization",
+            "support",
+            "billing"
         ]
     ] = Field(
         None,
@@ -72,7 +118,10 @@ class ExtractionItem(BaseModel):
             "  • 'extraction_items' = previously extracted fields (list in extra_rules['fields_to_summarize'])\n"
             "When type=='checkbox', valid values are:\n"
             "  • 'single_value'     = exactly one checkbox selected\n"
-            "  • 'multi_value'      = zero or more checkboxes may be selected"
+            "  • 'multi_value'      = zero or more checkboxes may be selected\n"
+            "When type in ['key-value','entity-block'], additional scopes allowed are:\n"
+            "  • 'address_block', 'currency', 'identifier', 'number', 'date', 'email', 'signature_block', 'contact'.\n"
+            "For contact-oriented entity blocks you may also use: 'person', 'organization', 'support', 'billing'."
         )
     )
     section_name: Optional[str] = Field(
@@ -94,6 +143,58 @@ class ExtractionItem(BaseModel):
             if getattr(item, 'table_header', None):
                 if item.table_header:
                     raise ValueError("'table_header' is only valid when type=='table'.")
+
+        entity_like_types = {"entity-block"}
+        contact_scopes = {"contact", "person", "organization", "support", "billing"}
+
+        if typ in entity_like_types:
+            # Visual blocks are multi-line by default
+            item.multiline_value = True
+
+            if item.anchor_phrases and not isinstance(item.anchor_phrases, list):
+                raise ValueError("'anchor_phrases' must be a list when provided.")
+            if item.region_hint and not isinstance(item.region_hint, list):
+                raise ValueError("'region_hint' must be a list when provided.")
+            if item.entity_type and not isinstance(item.entity_type, list):
+                raise ValueError("'entity_type' must be a list when provided.")
+            if item.contact_fields and not isinstance(item.contact_fields, list):
+                raise ValueError("'contact_fields' must be a list when provided.")
+            if item.contact_fields and item.scope not in contact_scopes:
+                raise ValueError(
+                    "'contact_fields' requires scope to be one of ['contact','person','organization','support','billing']."
+                )
+        else:
+            if item.include_bbox:
+                raise ValueError("'include_bbox' is only valid when type=='entity-block'.")
+            if item.region_hint:
+                raise ValueError("'region_hint' is only valid when type=='entity-block'.")
+            if item.anchor_phrases:
+                # Allow anchor phrases on key-value for now
+                if typ != "key-value":
+                    raise ValueError("'anchor_phrases' is only valid for type in ['key-value','entity-block'].")
+            if item.entity_type:
+                raise ValueError("'entity_type' is only valid when type=='entity-block'.")
+            if item.contact_fields:
+                raise ValueError("'contact_fields' is only valid when type=='entity-block'.")
+
+        allowed_region_hints = {
+            "header",
+            "footer",
+            "left",
+            "right",
+            "center",
+            "top_left",
+            "top_right",
+            "bottom_left",
+            "bottom_right"
+        }
+        if item.region_hint:
+            invalid = [hint for hint in item.region_hint if hint not in allowed_region_hints]
+            if invalid:
+                raise ValueError(
+                    f"'region_hint' contains unsupported values {invalid}. "
+                    f"Allowed values: {sorted(allowed_region_hints)}."
+                )
 
         if typ == "summary":
             if scope not in ("whole", "section", "pages", "extraction_items"):
@@ -117,6 +218,28 @@ class ExtractionItem(BaseModel):
             if scope not in ("single_value", "multi_value"):
                 raise ValueError(
                     "When type=='checkbox', 'scope' must be one of ['single_value', 'multi_value']."
+                )
+        elif typ in ("key-value", "entity-block"):
+            allowed_scope_vals = {
+                None,
+                "address_block",
+                "currency",
+                "identifier",
+                "number",
+                "date",
+                "email",
+                "signature_block",
+                "contact",
+                "person",
+                "organization",
+                "support",
+                "billing"
+            }
+            if scope not in allowed_scope_vals:
+                raise ValueError(
+                    "When type in ['key-value','entity-block'], 'scope' must be one of "
+                    "['address_block','currency','identifier','number','date','email','signature_block',"
+                    "'contact','person','organization','support','billing'] or omitted."
                 )
         # For other types, no scope required
         return item

@@ -2,7 +2,15 @@ from pydantic import BaseModel, Field, RootModel, model_validator, PrivateAttr
 from typing import List, Optional, Union, Dict, Any
 
 
-# 1) Fragment model for multi-page key-value extractions
+# 1) Shared bounding box model for visual extractions
+class BoundingBox(BaseModel):
+    x1: float = Field(..., description="Left coordinate in pixels")
+    y1: float = Field(..., description="Top coordinate in pixels")
+    x2: float = Field(..., description="Right coordinate in pixels")
+    y2: float = Field(..., description="Bottom coordinate in pixels")
+
+
+# 2) Fragment model for multi-page key-value extractions
 class KVFragment(BaseModel):
     value: str = Field(..., description="Raw fragment from this page")
     post_processing_value: Optional[str] = Field(
@@ -11,7 +19,7 @@ class KVFragment(BaseModel):
     page_number: int = Field(..., description="1-indexed page number")
 
 
-# 2) Top-level Key-Value output model
+# 3) Top-level Key-Value output model
 class KeyValueOutput(BaseModel):
     field_name: str = Field(..., description="Logical field name")
     value: str = Field(
@@ -38,7 +46,7 @@ class KeyValueOutput(BaseModel):
         return values
 
 
-# 3) Generic PointFragment model (used for bullet-points and checkbox selections)
+# 4) Generic PointFragment model (used for bullet-points and checkbox selections)
 class PointFragment(BaseModel):
     value: str = Field(..., description="Text value of this point fragment")
     post_processing_value: Optional[str] = Field(
@@ -48,7 +56,7 @@ class PointFragment(BaseModel):
     index: int = Field(..., description="Global index of this point fragment")
 
 
-# 4) Top-level Bullet-Points output model
+# 5) Top-level Bullet-Points output model
 class BulletPointsOutput(BaseModel):
     field_name: str = Field(..., description="Logical field name")
     value: List[PointFragment] = Field(
@@ -63,7 +71,7 @@ class BulletPointsOutput(BaseModel):
         return values
 
 
-# 5) Final summary output model
+# 6) Final summary output model
 class SummaryOutput(BaseModel):
     field_name: str = Field(..., description="Logical field name or summary identifier")
     value: str = Field(..., description="The concatenated summary text")
@@ -82,7 +90,7 @@ class SummaryOutput(BaseModel):
         return values
 
 
-# 6) Checkbox output model (now using List[PointFragment] for selected_options)
+# 7) Checkbox output model (now using List[PointFragment] for selected_options)
 class CheckboxOutput(BaseModel):
     field_name: str = Field(
         ..., description="Logical field name, e.g. 'OccupancyStatus' or 'FeaturesSelected'."
@@ -102,7 +110,7 @@ class CheckboxOutput(BaseModel):
         return values
 
 
-# 7) Table row fragment model for multi-page table support
+# 8) Table row fragment model for multi-page table support
 
 class TableCell(BaseModel):
     """
@@ -137,7 +145,7 @@ class TableRowFragment(BaseModel):
     cells: List[TableCell] = Field(..., description="Cells captured on this page")
 
 
-# 8) Table output model for structured table extraction results
+# 9) Table output model for structured table extraction results
 class TableOutput(BaseModel):
     field_name: str = Field(..., description="Logical field name of the table")
     value: List[TableRow] = Field(..., description="Final, ordered list of table rows")
@@ -164,13 +172,77 @@ class TableOutput(BaseModel):
         return v
 
 
-# 9) Now define ExtractionOutput as a RootModel of the union
-class ExtractionOutput(RootModel[Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput]]):
-    root: Union[KeyValueOutput, BulletPointsOutput, SummaryOutput, CheckboxOutput, TableOutput]
+# 10) Entity block fragment / output models
+class EntityFieldEntry(BaseModel):
+    key: str = Field(..., description="Logical name of the sub-field (e.g., 'phone', 'email').")
+    value: str = Field(..., description="Extracted value for this sub-field.")
+    confidence: Optional[float] = Field(
+        None, description="Optional confidence score for this sub-field."
+    )
+
+
+class EntityBlockFragment(BaseModel):
+    page_number: int = Field(..., description="1-indexed page number containing the fragment")
+    value: str = Field(..., description="Extracted text for this fragment")
+    bbox: Optional[BoundingBox] = Field(
+        None, description="Optional bounding box for the fragment"
+    )
+    confidence: Optional[float] = Field(
+        None, description="Optional confidence score for this fragment"
+    )
+    continue_next_page: Optional[bool] = Field(
+        None, description="True if the block continues on the next page."
+    )
+    fields: Optional[List[EntityFieldEntry]] = Field(
+        default_factory=list,
+        description="Optional structured sub-fields captured within this fragment."
+    )
+
+
+class EntityBlockOutput(BaseModel):
+    field_name: str = Field(..., description="Logical field name for the entity block")
+    value: str = Field(..., description="Primary text extracted for the block")
+    key: str = Field(..., description="Literal search key/description used for extraction")
+    page_number: Optional[int] = Field(
+        None, description="Primary page number associated with the block"
+    )
+    bbox: Optional[BoundingBox] = Field(
+        None, description="Bounding box corresponding to the primary block"
+    )
+    confidence: Optional[float] = Field(
+        None, description="Optional confidence score associated with the block"
+    )
+    fields: Optional[List[EntityFieldEntry]] = Field(
+        default_factory=list,
+        description="Optional structured sub-fields extracted from the block."
+    )
+    fragments: Optional[List[EntityBlockFragment]] = Field(
+        None,
+        description="Optional per-page breakdown when multipage extraction is enabled."
+    )
+
+
+# 11) Now define ExtractionOutput as a RootModel of the union
+class ExtractionOutput(RootModel[Union[
+    KeyValueOutput,
+    BulletPointsOutput,
+    SummaryOutput,
+    CheckboxOutput,
+    TableOutput,
+    EntityBlockOutput
+]]):
+    root: Union[
+        KeyValueOutput,
+        BulletPointsOutput,
+        SummaryOutput,
+        CheckboxOutput,
+        TableOutput,
+        EntityBlockOutput
+    ]
     # Use a private attribute for 'interim' so RootModel doesn't break; private attrs are not serialized
     _interim: bool = PrivateAttr(default=False)
 
-# 10) And define ExtractionOutputs as a RootModel of a list of ExtractionOutput
+# 12) And define ExtractionOutputs as a RootModel of a list of ExtractionOutput
 class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
     root: List[ExtractionOutput]
 
@@ -181,6 +253,7 @@ class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
         - For BulletPointsOutput: maps to the list of raw bullet fragment strings.
         - For SummaryOutput: maps to the 'summary' string.
         - For CheckboxOutput: maps to the list of PointFragment dictionaries.
+        - For EntityBlockOutput: maps to a dict containing value, page_number, and bbox (if available).
         """
         flat: Dict[str, Any] = {}
         for entry in self.root:
@@ -205,6 +278,20 @@ class ExtractionOutputs(RootModel[List[ExtractionOutput]]):
                         rd[key] = cell.value
                     row_dicts.append(rd)
                 flat[obj.field_name] = row_dicts
+            elif isinstance(obj, EntityBlockOutput):
+                payload: Dict[str, Any] = {
+                    "value": obj.value,
+                    "page_number": obj.page_number
+                }
+                if obj.bbox is not None:
+                    payload["bbox"] = obj.bbox.model_dump()
+                if obj.confidence is not None:
+                    payload["confidence"] = obj.confidence
+                if obj.fields:
+                    payload["fields"] = [field.model_dump() for field in obj.fields]
+                if obj.fragments:
+                    payload["fragments"] = [frag.model_dump() for frag in obj.fragments]
+                flat[obj.field_name] = payload
             else:  # CheckboxOutput
                 # Represent each PointFragment as its dict (point_number, value, page_number, etc.)
                 flat[obj.field_name] = [pt.model_dump() for pt in obj.value]
