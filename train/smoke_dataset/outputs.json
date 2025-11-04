@@ -1,0 +1,12 @@
+[
+  {
+    "field_name": "VendorName",
+    "value": "ACME Corp",
+    "page_number": 1
+  },
+  {
+    "field_name": "TotalDue",
+    "value": "$1,234.56",
+    "page_number": 1
+  }
+]

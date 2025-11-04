@@ -3,14 +3,15 @@
 Utility to convert labelled document extraction results into training samples
 for the Qwen extraction fine-tuning pipeline.
 
-Each output sample is a JSON file containing:
-  - document_id
-  - field_name
-  - page_index (1-indexed)
-  - page_image (relative path to the exported PNG)
-  - extraction_item (original config entry)
-  - extraction_output (page-specific ground truth)
-  - last_page_value (optional contextual payload for multi-page fields)
+Each output sample is a JSON file containing the rendered page image and
+ground-truth payloads. Two grouping modes are supported:
+
+* field-level (default): one JSON per extraction field per page, with keys
+  `document_id`, `field_name`, `page_index`, `page_image`,
+  `extraction_item`, `extraction_output`, and optional `last_page_value`.
+* page-level: one JSON per page, with keys `document_id`, `page_index`,
+  `page_image`, and `fields` (list of field-level entries, each matching the
+  structure above).
 """
 
 from __future__ import annotations
@@ -20,12 +21,16 @@ import json
 import os
 from copy import deepcopy
 from pathlib import Path
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Dict, Iterable, List, Optional
 
 try:
     import fitz  # PyMuPDF
 except ImportError as exc:  # pragma: no cover - handled at runtime
     raise SystemExit("PyMuPDF is required. Install via `pip install pymupdf`.") from exc
+
+
+GROUPING_FIELD = "field"
+GROUPING_PAGE = "page"
 
 
 def export_pdf_images(pdf_path: Path, image_dir: Path) -> Dict[int, Path]:
@@ -148,14 +153,20 @@ def generate_samples(
     page_images: Dict[int, Path],
     document_id: str,
     dataset_root: Path,
+    grouping: str = GROUPING_FIELD,
 ) -> List[Dict]:
     """
     Build dataset samples for all fields in one document.
     """
+    grouping_mode = grouping.lower()
+    if grouping_mode not in {GROUPING_FIELD, GROUPING_PAGE}:
+        raise ValueError(f"Unsupported grouping mode: {grouping}")
+
     config_by_field = {item["field_name"]: item for item in config_items}
     outputs_by_field = {entry.get("field_name"): entry for entry in extraction_outputs}
 
     samples: List[Dict] = []
+    page_payloads: Dict[int, Dict] = {}
 
     for field_name, item in config_by_field.items():
         output = outputs_by_field.get(field_name)
@@ -172,35 +183,71 @@ def generate_samples(
                 raise ValueError(f"No rendered image for page {page} (field {field_name}).")
 
             fragment = slice_output_by_page(item_type, output, page)
-            sample = {
-                "document_id": document_id,
-                "field_name": field_name,
-                "page_index": int(page),
-                "page_image": os.path.relpath(image_path, dataset_root),
-                "extraction_item": deepcopy(item),
-                "extraction_output": deepcopy(fragment),
-            }
+            last_page_value = deepcopy(accumulated) if position > 0 and accumulated is not None else None
 
-            if position > 0 and accumulated is not None:
-                sample["last_page_value"] = deepcopy(accumulated)
+            if grouping_mode == GROUPING_FIELD:
+                sample = {
+                    "document_id": document_id,
+                    "field_name": field_name,
+                    "page_index": int(page),
+                    "page_image": os.path.relpath(image_path, dataset_root),
+                    "extraction_item": deepcopy(item),
+                    "extraction_output": deepcopy(fragment),
+                }
 
-            samples.append(sample)
+                if last_page_value is not None:
+                    sample["last_page_value"] = last_page_value
+
+                samples.append(sample)
+            else:
+                payload = page_payloads.setdefault(
+                    int(page),
+                    {
+                        "document_id": document_id,
+                        "page_index": int(page),
+                        "page_image": os.path.relpath(image_path, dataset_root),
+                        "fields": [],
+                    },
+                )
+
+                field_entry = {
+                    "field_name": field_name,
+                    "extraction_item": deepcopy(item),
+                    "extraction_output": deepcopy(fragment),
+                }
+
+                if last_page_value is not None:
+                    field_entry["last_page_value"] = last_page_value
+
+                payload["fields"].append(field_entry)
+
             accumulated = merge_outputs(item_type, accumulated, fragment)
+
+    if grouping_mode == GROUPING_PAGE:
+        for payload in page_payloads.values():
+            payload["fields"].sort(key=lambda entry: entry["field_name"])
+        samples = [page_payloads[page] for page in sorted(page_payloads.keys())]
 
     return samples
 
 
-def save_samples(samples: List[Dict], output_dir: Path, document_id: str) -> None:
+def save_samples(samples: List[Dict], output_dir: Path, document_id: str, grouping: str) -> None:
     """
     Write samples to disk using stable filenames.
     """
+    grouping_mode = grouping.lower()
     samples_dir = output_dir / "samples"
     samples_dir.mkdir(parents=True, exist_ok=True)
 
     for idx, sample in enumerate(samples, start=1):
-        field = sample["field_name"]
         page = sample["page_index"]
-        file_path = samples_dir / f"{document_id}_{field}_p{page:03d}_{idx:04d}.json"
+        if grouping_mode == GROUPING_FIELD:
+            field = sample["field_name"]
+            file_path = samples_dir / f"{document_id}_{field}_p{page:03d}_{idx:04d}.json"
+        elif grouping_mode == GROUPING_PAGE:
+            file_path = samples_dir / f"{document_id}_page_{page:03d}_{idx:04d}.json"
+        else:
+            raise ValueError(f"Unsupported grouping mode: {grouping}")
         with file_path.open("w", encoding="utf-8") as handle:
             json.dump(sample, handle, indent=2, ensure_ascii=False)
 
@@ -212,6 +259,13 @@ def main() -> None:
     parser.add_argument("--outputs", type=str, required=True, help="Path to the ExtractionOutputs JSON.")
     parser.add_argument("--out-dir", type=str, required=True, help="Directory to write images and samples.")
     parser.add_argument("--doc-id", type=str, default=None, help="Optional document identifier (defaults to PDF stem).")
+    parser.add_argument(
+        "--grouping",
+        type=str,
+        choices=[GROUPING_FIELD, GROUPING_PAGE],
+        default=GROUPING_FIELD,
+        help="Grouping strategy for generated samples: 'field' (default) or 'page'.",
+    )
     args = parser.parse_args()
 
     pdf_path = Path(args.pdf).expanduser().resolve()
@@ -233,10 +287,17 @@ def main() -> None:
     config_items = load_json(config_path)
     outputs = load_json(outputs_path)
 
-    samples = generate_samples(config_items, outputs, page_images, document_id, out_dir)
-    save_samples(samples, out_dir, document_id)
+    samples = generate_samples(
+        config_items,
+        outputs,
+        page_images,
+        document_id,
+        out_dir,
+        grouping=args.grouping,
+    )
+    save_samples(samples, out_dir, document_id, grouping=args.grouping)
 
-    print(f"Wrote {len(samples)} samples to {out_dir}")
+    print(f"Wrote {len(samples)} {args.grouping}-grouped samples to {out_dir}")
 
 
 if __name__ == "__main__":

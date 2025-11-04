@@ -17,6 +17,8 @@ data:
     extraction_item_key: "extraction_item"
     extraction_output_key: "extraction_output"
     last_page_value_key: "last_page_value"
+    # Works with either field-level JSON files or page-level bundles created via
+    # `train.tools.build_dataset --grouping page`.
 
   # DataLoader parameters.
   batch_size: 1
@@ -41,12 +43,17 @@ training:
   weight_decay: 0.0
   gradient_clip: 1.0
   checkpoint_dir: "./checkpoints"
+  loss:
+    type: "cross_entropy"
+    reduction: "token"    # token | sequence | sum
+    label_smoothing: 0.0
 
 rl:
   kl_beta: 0.1
   reward_scale: 1.0
   ignore_index: -100
   baseline_momentum: 0.95
+  normalize_advantages: true
 
 logging:
   dir: "./logs"
@@ -64,4 +71,3 @@ inference:
 evaluation:
   device: "mps"
   log_dir: "./logs"
-

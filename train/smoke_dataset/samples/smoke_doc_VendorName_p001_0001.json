@@ -1,0 +1,27 @@
+{
+  "document_id": "smoke_doc",
+  "field_name": "VendorName",
+  "page_index": 1,
+  "page_image": "images/dummy_statement_page_001.png",
+  "extraction_item": {
+    "field_name": "VendorName",
+    "description": "Name of the vendor or payee shown on the statement (usually near the top-left or header).",
+    "probable_pages": [
+      1
+    ],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": [
+      "Vendor",
+      "Payee",
+      "Billed To"
+    ]
+  },
+  "extraction_output": {
+    "field_name": "VendorName",
+    "value": "ACME Corp",
+    "page_number": 1
+  }
+}

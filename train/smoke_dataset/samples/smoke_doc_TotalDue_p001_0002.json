@@ -1,0 +1,27 @@
+{
+  "document_id": "smoke_doc",
+  "field_name": "TotalDue",
+  "page_index": 1,
+  "page_image": "images/dummy_statement_page_001.png",
+  "extraction_item": {
+    "field_name": "TotalDue",
+    "description": "Grand total or amount due.",
+    "probable_pages": [
+      1
+    ],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": [
+      "Total",
+      "Amount Due",
+      "Balance Due"
+    ]
+  },
+  "extraction_output": {
+    "field_name": "TotalDue",
+    "value": "$1,234.56",
+    "page_number": 1
+  }
+}

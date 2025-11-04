@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Tuple
 
 from PIL import Image
 from torch.utils.data import Dataset
@@ -15,6 +15,9 @@ class ExtractionSampleDataset(Dataset):
       - extraction_item:  JSON describing the ExtractionItem to process.
       - extraction_output: Expected ExtractionOutput JSON.
       - last_page_value:  Optional JSON payload with context from previous pages.
+
+    Samples produced via `train.tools.build_dataset --grouping page` include a
+    `fields` array; this class flattens each field into its own training record.
     """
 
     def __init__(self, data_cfg: Dict):
@@ -33,13 +36,32 @@ class ExtractionSampleDataset(Dataset):
         if not self._samples:
             raise ValueError(f"No samples found in {self.root_dir} with extension {self.sample_ext}")
 
+        # Flatten page-level samples (containing `fields`) into individual records.
+        self._expanded_samples: List[Tuple[Path, Optional[int]]] = []
+        self._payload_cache: Dict[Path, Dict] = {}
+        for sample_path in self._samples:
+            with sample_path.open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+
+            self._payload_cache[sample_path] = payload
+
+            fields = payload.get("fields")
+            if isinstance(fields, list) and fields:
+                for idx in range(len(fields)):
+                    self._expanded_samples.append((sample_path, idx))
+            else:
+                self._expanded_samples.append((sample_path, None))
+
     def __len__(self) -> int:
-        return len(self._samples)
+        return len(self._expanded_samples)
 
     def __getitem__(self, idx: int) -> Dict:
-        sample_path = self._samples[idx]
-        with sample_path.open("r", encoding="utf-8") as handle:
-            payload = json.load(handle)
+        sample_path, field_idx = self._expanded_samples[idx]
+        payload = self._payload_cache.get(sample_path)
+        if payload is None:
+            with sample_path.open("r", encoding="utf-8") as handle:
+                payload = json.load(handle)
+            self._payload_cache[sample_path] = payload
 
         image_rel_path = payload.get(self.image_key)
         if not image_rel_path:
@@ -48,9 +70,20 @@ class ExtractionSampleDataset(Dataset):
         if not image_path.is_file():
             raise FileNotFoundError(f"Image file not found: {image_path}")
 
-        extraction_item = payload.get(self.item_key) or {}
-        extraction_output = payload.get(self.output_key) or {}
-        last_page_value: Optional[Dict] = payload.get(self.last_value_key)
+        if field_idx is None:
+            extraction_item = payload.get(self.item_key) or {}
+            extraction_output = payload.get(self.output_key) or {}
+            last_page_value: Optional[Dict] = payload.get(self.last_value_key)
+        else:
+            fields = payload.get("fields") or []
+            try:
+                field_entry = fields[field_idx]
+            except IndexError as exc:
+                raise IndexError(f"Field index {field_idx} out of range for {sample_path}") from exc
+
+            extraction_item = field_entry.get(self.item_key) or {}
+            extraction_output = field_entry.get(self.output_key) or {}
+            last_page_value = field_entry.get(self.last_value_key)
 
         return {
             "image_path": str(image_path),
@@ -109,4 +142,3 @@ class ExtractionCollator:
 
     def _build_output_text(self, extraction_output: Dict) -> str:
         return json.dumps(extraction_output, ensure_ascii=False)
-

@@ -1,0 +1,55 @@
+{
+  "document_id": "smoke_doc",
+  "page_index": 1,
+  "page_image": "images/dummy_statement_page_001.png",
+  "fields": [
+    {
+      "field_name": "TotalDue",
+      "extraction_item": {
+        "field_name": "TotalDue",
+        "description": "Grand total or amount due.",
+        "probable_pages": [
+          1
+        ],
+        "type": "key-value",
+        "multiline_value": false,
+        "multipage_value": false,
+        "parent": [],
+        "search_keys": [
+          "Total",
+          "Amount Due",
+          "Balance Due"
+        ]
+      },
+      "extraction_output": {
+        "field_name": "TotalDue",
+        "value": "$1,234.56",
+        "page_number": 1
+      }
+    },
+    {
+      "field_name": "VendorName",
+      "extraction_item": {
+        "field_name": "VendorName",
+        "description": "Name of the vendor or payee shown on the statement (usually near the top-left or header).",
+        "probable_pages": [
+          1
+        ],
+        "type": "key-value",
+        "multiline_value": false,
+        "multipage_value": false,
+        "parent": [],
+        "search_keys": [
+          "Vendor",
+          "Payee",
+          "Billed To"
+        ]
+      },
+      "extraction_output": {
+        "field_name": "VendorName",
+        "value": "ACME Corp",
+        "page_number": 1
+      }
+    }
+  ]
+}

@@ -36,6 +36,8 @@ Each dataset sample is a JSON file with paths relative to the file itself:
 
 Place all samples in a directory (e.g. `/data/extraction_samples`). Images can live alongside the JSON or in subfolders; the JSON should reference them via a relative path (`page_image` above).
 
+> **Page-level bundles.** The dataset builder can also emit *one JSON per page* via `--grouping page`. The resulting files contain `fields: [...]` arrays. `ExtractionSampleDataset` automatically flattens these bundles into individual training records, so you can freely mix field-level and page-level samples in the same directory.
+
 ### Converting existing labelled documents
 
 If you already have:
@@ -51,10 +53,12 @@ python3 -m train.tools.build_dataset \
   --config path/to/extraction_items.json \
   --outputs path/to/extraction_outputs.json \
   --out-dir /data/extraction_samples/document_001 \
-  --doc-id document_001
+  --doc-id document_001 \
+  --grouping page  # or "field" for legacy behaviour
 ```
 
-The script renders per-page PNGs (under `images/`) and writes page-level samples (under `samples/`). For multi-page bullet/checkbox/table fields it emits one sample per page and threads the previous pages’ content via `last_page_value`.
+The script renders per-page PNGs (under `images/`) and writes ready-to-train JSON files (under `samples/`).
+For multi-page bullet/checkbox/table fields it emits one sample per page and threads the previous pages’ content via `last_page_value`.
 
 ### Bootstrapping from open datasets (LLM-powered)
 
@@ -85,11 +89,14 @@ cp train/config/example.yml my_config.yml
 Key sections:
 
 - `data.processor_name`: Hugging Face processor matching your Qwen checkpoint.
-- `data.dataset.root_dir`: Directory containing the JSON samples.
-- `model.pretrained_name`: Qwen checkpoint to fine-tune.
-- `training.mode`: `"supervised"` for cross-entropy; switch to `"grpo"` after warm-up.
-- `training.device`: `"mps"` for Apple Silicon, `"cuda"` for NVIDIA, etc.
-- `rl`: Reinforcement parameters used when `mode: grpo`.
+- `data.dataset.root_dir`: Directory containing the JSON samples (field-level or page-level).
+- `model.pretrained_name`: Qwen checkpoint to fine-tune and deployment device/dtype knobs.
+- `training.mode`: `"supervised"` for cross-entropy warm-up; switch to `"grpo"` to enable policy optimisation.
+- `training.loss`: Controls the supervised loss head (`type`, `reduction` strategy: `token`, `sequence`, or `sum`, and `label_smoothing`).
+- `rl`: Reinforcement-specific knobs such as `kl_beta`, `reward_scale`, and `normalize_advantages`.
+- `logging`: Directory for TensorBoard-style event logs.
+
+See `train/PLAN.md` for an end-to-end schedule that links data prep, supervised warm-up, and GRPO fine-tuning.
 
 ## Running training
 
@@ -125,6 +132,7 @@ Both commands emit raw JSON strings representing the predicted `extraction_outpu
 
 ## Notes
 
-- The pipeline assumes a single page per sample; multi-page scenarios should be handled by providing `last_page_value` context and including separate samples per page.
+- When using page-level grouping, keep the `images/` directory adjacent to the JSON samples (e.g. `samples/images/...`).
+- Multi-page scenarios should include persistent `last_page_value` context; the dataset builder handles this automatically when configs/output JSON include page metadata.
 - Qwen checkpoints expect high-quality images; avoid resizing beyond their documented limits.
 - GRPO training is compute intensive. On Apple M-series hardware keep batch size at 1 and monitor memory.

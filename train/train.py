@@ -26,6 +26,7 @@ class TrainingLoop:
         self.data_cfg: Dict = cfg.get("data", {})
         self.model_cfg: Dict = cfg.get("model", {})
         self.rl_cfg: Dict = cfg.get("rl", {})
+        self.loss_cfg: Dict = self.training_cfg.get("loss", {})
         self.logging_cfg: Dict = cfg.get("logging", {})
 
         self.seed = int(self.training_cfg.get("seed", 42))
@@ -46,7 +47,7 @@ class TrainingLoop:
 
         self.data_module = DataModule(self.data_cfg)
         self.model_wrapper = QwenExtractionModel(self.model_cfg)
-        self.agent = GRPOAgent(self.rl_cfg)
+        self.agent = GRPOAgent(self.rl_cfg, loss_cfg=self.loss_cfg)
 
         self.optimiser = AdamW(self.model_wrapper.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
