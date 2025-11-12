@@ -1,0 +1,21 @@
+{
+  "document_id": "smoke_doc",
+  "fields": [
+    {
+      "field_name": "VendorName",
+      "type": "key-value",
+      "extraction_output": {
+        "value": "ACME Corp",
+        "page_number": 1
+      }
+    },
+    {
+      "field_name": "TotalDue",
+      "type": "key-value",
+      "extraction_output": {
+        "value": "$1,234.56",
+        "page_number": 1
+      }
+    }
+  ]
+}
