@@ -1,0 +1,53 @@
+# Minimal config for running a smoke training loop with mock components.
+
+data:
+  processor_name: "mock"
+  text:
+    max_input_tokens: 64
+    max_target_tokens: 64
+  dataset:
+    root_dir: "train/smoke_dataset/samples"
+    sample_ext: ".json"
+    image_key: "page_image"
+    extraction_item_key: "extraction_item"
+    extraction_output_key: "extraction_output"
+    last_page_value_key: "last_page_value"
+  batch_size: 2
+  num_workers: 0
+  shuffle: false
+  train_split: 1.0
+  val_split: 0.0
+  test_split: 0.0
+
+model:
+  pretrained_name: "mock"
+  device: "cpu"
+  dtype: "float32"
+  gradient_checkpointing: false
+  mock_vocab_size: 512
+  mock_hidden_size: 64
+  mock_image_size: 32
+
+training:
+  mode: "supervised"
+  seed: 7
+  device: "cpu"
+  epochs: 1
+  lr: 1.0e-3
+  weight_decay: 0.0
+  gradient_clip: 1.0
+  checkpoint_dir: "./checkpoints_smoke"
+  loss:
+    type: "cross_entropy"
+    reduction: "token"
+    label_smoothing: 0.0
+
+rl:
+  kl_beta: 0.1
+  reward_scale: 1.0
+  ignore_index: -100
+  baseline_momentum: 0.95
+  normalize_advantages: true
+
+logging:
+  dir: "./logs_smoke"

@@ -16,3 +16,38 @@ project_root/
 │   └── parser.py
 ├── local_test.py
 └── requirements.txt
+
+                 OneSpec-I + Document
+                          │
+                 ┌────────▼─────────┐
+                 │   UEP Compiler   │
+                 └────────┬─────────┘
+                          │
+            field tasks, routes, types
+                          │
+                ┌─────────┼────────────┐
+                │         │            │
+         ┌──────▼───┐ ┌───▼─────┐ ┌────▼─────────┐
+         │ ColPali  │ │ OSRNet  │ │ Detectors    │
+         │ Retriever│ │(main ML)│ │ (checkbox,   │
+         └────┬─────┘ └────┬────┘ │ signature…) │
+              │            │      └────┬────────┘
+      page embeddings,     │           │
+      page rankings  ──────┘           │
+              │                        │
+              └─────────┬──────────────┘
+                        ▼
+                ┌───────────────┐
+                │ Post-Processor│
+                │  (rules, norm)│
+                └───────┬───────┘
+                        ▼
+                 OneSpec-O_raw
+                        ▼
+                ┌───────────────┐
+                │ LLM Rectifier │
+                │  (cleanup)    │
+                └───────┬───────┘
+                        ▼
+                  OneSpec-O_final
+

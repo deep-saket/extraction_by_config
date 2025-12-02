@@ -7,6 +7,8 @@ from torch.utils.data import DataLoader, random_split
 
 from transformers import AutoProcessor
 
+from train.mock_components import MockProcessor
+
 from train.data_loader import ExtractionSampleDataset, ExtractionCollator
 
 
@@ -34,8 +36,13 @@ class DataModule:
         processor_name = self.data_cfg.get("processor_name")
         if not processor_name:
             raise ValueError("`processor_name` must be specified in data configuration.")
-        self.processor = AutoProcessor.from_pretrained(processor_name)
-        self.processor.image_processor.do_thumbnail = False
+
+        if processor_name == "mock":
+            self.processor = MockProcessor()
+        else:
+            self.processor = AutoProcessor.from_pretrained(processor_name)
+            if hasattr(self.processor, "image_processor") and hasattr(self.processor.image_processor, "do_thumbnail"):
+                self.processor.image_processor.do_thumbnail = False
 
         text_cfg = self.data_cfg.get("text") or {}
         self.collator = ExtractionCollator(self.processor, text_cfg)

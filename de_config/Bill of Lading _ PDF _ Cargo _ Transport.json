@@ -1,0 +1,93 @@
+[ 
+  {
+    "field_name": "Name",
+    "description": "Find this parameter value under 'SHIP FROM' section mentioned as Name",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Name"]
+  },
+  {
+    "field_name": "Address",
+    "description": "Find this parameter value under 'SHIP FROM' section menationed as Address",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Address"]
+  },
+  {
+    "field_name": "City/State/Zip",
+    "description": "Find this parameter value under 'SHIP FROM' section mentioned as City/State/Zip",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["City/State/Zip"]
+  },
+  {
+    "field_name": "SID#",
+    "description": "Find this parameter value under 'SHIP FROM' section mentioned as SID#",
+    "probable_pages": [1],
+    "type": "key-value",
+    "scope": "identifier",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["SID#"]
+  },
+  {
+    "field_name": "Name",
+    "description": "Find this parameter value under 'SHIP TO' section mentioned as Name",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Name"]
+  },
+  {
+    "field_name": "Address",
+    "description": "Find this parameter value under 'SHIP TO' section menationed as Address",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["Address"]
+  },
+  {
+    "field_name": "City/State/Zip",
+    "description": "Find this parameter value under 'SHIP TO' section mentioned as City/State/Zip",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["City/State/Zip"]
+  },
+  {
+    "field_name": "Name",
+    "description": "Find this parameter value under 'THIRD PARTY FREIGHT CHARGES BILL TO' section mentioned as Name. It will act as line item under this section",
+    "probable_pages": [1],
+    "type": "key-value",
+    "multiline_value": false,
+    "multipage_value": false,
+    "parent": ["Name"],
+    "search_keys": ["Name"]
+  },
+  {
+    "field_name": "Customer Order Information",
+    "description": "Table of line items: each column contains customer order number, pkgs, weight, pallet/slip and additional shipper info. In last a row contains Grand Total of pkgs and weight",
+    "probable_pages": [1],
+    "type": "table",
+    "multiline_value": true,
+    "multipage_value": false,
+    "parent": [],
+    "search_keys": ["customer order number", "pkgs", "weight", "pallet/slip", "additional shipper info", "grand total"]
+  }
+]

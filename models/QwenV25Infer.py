@@ -1,3 +1,5 @@
+from typing import Optional
+
 import torch
 from transformers import Qwen2_5_VLForConditionalGeneration, AutoProcessor
 from qwen_vl_utils import process_vision_info
@@ -43,6 +45,7 @@ class QwenV25Infer(InferenceVLComponent):
         self.client = None
         self.model = None
         self.processor = None
+        self.default_max_new_tokens = 2048
 
         if self.api_endpoint and self.api_token:
             # Use OpenAI-compatible HTTP interface
@@ -57,7 +60,7 @@ class QwenV25Infer(InferenceVLComponent):
         else:
             raise ValueError("Either API details or a model name must be provided for inference.")
 
-    def infer(self, image_data, prompt):
+    def infer(self, image_data, prompt, max_new_tokens: Optional[int] = None):
         """
         Performs inference on the provided image and prompt.
 
@@ -79,16 +82,16 @@ class QwenV25Infer(InferenceVLComponent):
 
         try:
             if self.client:
-                response = self._infer_via_api(image_data, prompt)
+                response = self._infer_via_api(image_data, prompt, max_new_tokens=max_new_tokens)
                 return response if isinstance(response, str) else str(response)
             elif self.model and self.processor:
-                return self._infer_locally(image_data, prompt)
+                return self._infer_locally(image_data, prompt, max_new_tokens=max_new_tokens)
             else:
                 raise ValueError("Model and processor or API details must be properly initialized for inference.")
         except Exception as e:
             raise RuntimeError(f"Inference failed: {str(e)}") from e
 
-    def _infer_locally(self, image_data, prompt):
+    def _infer_locally(self, image_data, prompt, max_new_tokens: Optional[int] = None):
         """
         Performs local inference using the loaded model.
 
@@ -133,13 +136,14 @@ class QwenV25Infer(InferenceVLComponent):
         prompt_len = inputs["input_ids"].shape[-1]
 
         # Generate output
+        max_tokens = max_new_tokens or self.default_max_new_tokens
         with torch.no_grad():
-            generated_ids = self.model.generate(**inputs, max_new_tokens=50000)
+            generated_ids = self.model.generate(**inputs, max_new_tokens=max_tokens)
         generated_ids = generated_ids[:, prompt_len:]
         generated_text = self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]
         return generated_text
 
-    def _infer_via_api(self, image_data, prompt):
+    def _infer_via_api(self, image_data, prompt, max_new_tokens: Optional[int] = None):
         """Call an OpenAI-compatible chat endpoint and return assistant text."""
         if isinstance(image_data, bytes):
             img = Image.open(BytesIO(image_data)).convert("RGB")
@@ -170,6 +174,8 @@ class QwenV25Infer(InferenceVLComponent):
             "messages": messages,
             "temperature": 0,
         }
+        if max_new_tokens is not None:
+            payload["max_tokens"] = int(max_new_tokens)
         headers = {
             "Authorization": f"Bearer {self.api_token}",
             "Content-Type": "application/json",
@@ -192,7 +198,7 @@ class QwenV25Infer(InferenceVLComponent):
             # fallback
             return json.dumps(data)
 
-    def infer_lang(self, prompt: str = None) -> str:
+    def infer_lang(self, prompt: str = None, max_new_tokens: Optional[int] = None) -> str:
         """
         Run inference using only text input.
 
@@ -220,6 +226,8 @@ class QwenV25Infer(InferenceVLComponent):
                     ],
                     "temperature": 0,
                 }
+                if max_new_tokens is not None:
+                    payload["max_tokens"] = int(max_new_tokens)
                 r = requests.post(url, headers=headers, data=json.dumps(payload), timeout=120)
                 r.raise_for_status()
                 data = r.json()
@@ -250,8 +258,9 @@ class QwenV25Infer(InferenceVLComponent):
                 prompt_len = inputs["input_ids"].shape[-1]
 
                 # Generate output
+                max_tokens = max_new_tokens or self.default_max_new_tokens
                 with torch.no_grad():
-                    generated_ids = self.model.generate(**inputs, max_new_tokens=50000)
+                    generated_ids = self.model.generate(**inputs, max_new_tokens=max_tokens)
                 generated_ids = generated_ids[:, prompt_len:]
 
                 return self.processor.batch_decode(generated_ids, skip_special_tokens=True)[0]

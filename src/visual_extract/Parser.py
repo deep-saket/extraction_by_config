@@ -56,7 +56,16 @@ class Parser(BaseComponent):
         self.prompt_builder = PromptBuilder()
         # Initialize LMProcessor first, then pass into VLMProcessor for schema-repair fallback
         self.lm_processor = LMProcessor(getattr(ModelManager, self.vlm_candidate))
-        self.vlm_processor = VLMProcessor(getattr(ModelManager, self.vlm_candidate), self.lm_processor)
+        max_tokens = parser_cfg.get("vlm_max_new_tokens")
+        max_segments = int(parser_cfg.get("vlm_max_segments", 1))
+        continuation_len = int(parser_cfg.get("vlm_continuation_snippet", 800))
+        self.vlm_processor = VLMProcessor(
+            getattr(ModelManager, self.vlm_candidate),
+            self.lm_processor,
+            max_new_tokens=max_tokens,
+            max_segments=max_segments,
+            continuation_snippet=continuation_len,
+        )
         self.page_finder = PageFinder(self.pdf_processor)
         self.parent_processor = ParentProcessor()
         self.result_builder_factory = ResultBuilderFactory()
@@ -185,7 +194,7 @@ class Parser(BaseComponent):
         extype = item.type
         cls_suffix = "".join(part.capitalize() for part in extype.split("-"))
         class_name = f"Parse{cls_suffix}"
-        module_name = f"src.parsers"
+        module_name = f"src.visual_extract.parsers"
 
         try:
             module = importlib.import_module(module_name)

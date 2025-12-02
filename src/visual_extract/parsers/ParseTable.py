@@ -30,17 +30,15 @@ class ParseTable(ParseBase):
 
     def _get_prev_page_context(self, prev_page_res):
         if prev_page_res and getattr(prev_page_res, 'rows', None):
-            # Provide the first row as context cue for the next-page prompt, if any
-            return prev_page_res.rows[0]
+            first_row = prev_page_res.rows[0]
+            if isinstance(first_row, list):
+                return " | ".join(first_row)
+            return str(first_row)
         return None
 
-    def _row_signature(self, row) -> Tuple:
+    def _row_signature(self, row_values: List[str]) -> Tuple:
         """Build a content-based signature for a row to avoid duplicates across pages."""
-        try:
-            cols = sorted((c.col_number, (c.value or '').strip()) for c in (row.cols or []))
-            return tuple(cols)
-        except Exception:
-            return (str(row),)
+        return tuple((value or "").strip() for value in row_values)
 
     def run(self, pages: List[int]) -> Any:
         # We'll return a list of fragments, each: { 'page_number': int, 'rows': [[...values...]], 'columns': [...]? }
@@ -64,12 +62,12 @@ class ParseTable(ParseBase):
 
                 # Build this page's rows as list of values, de-duped by signature
                 page_rows_values: List[List[str]] = []
-                for row in getattr(gen, 'rows', []) or []:
-                    sig = self._row_signature(row)
+                for row_values in getattr(gen, 'rows', []) or []:
+                    values = [str(v) if v is not None else '' for v in row_values]
+                    sig = self._row_signature(values)
                     if sig in seen_rows:
                         continue
                     seen_rows.add(sig)
-                    values = [str(c.value) if c.value is not None else '' for c in sorted(row.cols, key=lambda x: x.col_number)]
                     page_rows_values.append(values)
 
                 if page_rows_values:
@@ -77,8 +75,10 @@ class ParseTable(ParseBase):
                         'page_number': cur_pg,
                         'rows': page_rows_values,
                     }
-                    # Include columns only once (first non-empty wins in builder); use config-provided table_header if any
-                    if first_fragment and getattr(self.item, 'table_header', None):
+                    columns_from_gen = getattr(gen, 'columns', None) or []
+                    if columns_from_gen:
+                        frag['columns'] = [str(col) for col in columns_from_gen]
+                    elif first_fragment and getattr(self.item, 'table_header', None):
                         if any(str(h).strip() for h in self.item.table_header):
                             frag['columns'] = list(self.item.table_header)
                     fragments_for_table.append(frag)

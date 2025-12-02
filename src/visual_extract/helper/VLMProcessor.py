@@ -1,3 +1,5 @@
+from typing import Optional
+
 from common import CallableComponent, ExtractionState
 import json
 from pydantic import ValidationError
@@ -9,10 +11,20 @@ class VLMProcessor(CallableComponent):
     """
     Handles extraction tasks using a Vision-Language Model (VLM) inference engine.
     """
-    def __init__(self, vlm_infer, lm_processor=None):
+    def __init__(
+        self,
+        vlm_infer,
+        lm_processor=None,
+        max_new_tokens: Optional[int] = None,
+        max_segments: int = 1,
+        continuation_snippet: int = 800,
+    ):
         super().__init__()
         self.vlm_infer = vlm_infer
         self.lm_processor = lm_processor
+        self.max_generation_tokens = max_new_tokens
+        self.max_generation_segments = max(1, max_segments)
+        self.continuation_snippet = max(200, continuation_snippet)
 
     def extract(self, image_data, prompt, generation_model, **kwargs):
         """
@@ -36,9 +48,15 @@ class VLMProcessor(CallableComponent):
         last_validation_error = None
         had_parse_error = False
         had_validation_error = False
+        max_new_tokens_override = kwargs.get("max_new_tokens")
+
         for i in range(2):
             self.logger.info("Running VLM inference on image_data...")
-            raw_output = self.vlm_infer.infer(image_data, prompt)
+            raw_output = self._generate_with_limits(
+                image_data,
+                prompt,
+                max_new_tokens=max_new_tokens_override or self.max_generation_tokens,
+            )
             last_raw_output = raw_output
             self.logger.info("Finished VLM inference on image_data.")
 
@@ -46,7 +64,7 @@ class VLMProcessor(CallableComponent):
                 # Attempt to parse as JSON string
                 parsed = DirtyJsonParser.parse(raw_output)
 
-            except json.JSONDecodeError as e:
+            except (json.JSONDecodeError, ValueError) as e:
                 self.logger.warning(f"VLM output is not valid JSON (attempt {i+1}/2): {e}. Retrying...")
                 had_parse_error = True
                 retry = PromptBuilder.get_retry_prompt('parse_error')
@@ -109,3 +127,70 @@ class VLMProcessor(CallableComponent):
 
     def __call__(self, image_data, prompt, generation_model, *args, **kwargs):
         return self.extract(image_data, prompt, generation_model, **kwargs)
+
+    def _generate_with_limits(self, image_data, prompt: str, max_new_tokens: Optional[int]) -> str:
+        """Generate text, optionally chunking the call to stay within token limits."""
+        if not max_new_tokens:
+            return self.vlm_infer.infer(image_data, prompt)
+
+        combined_output = ""
+        base_prompt = prompt
+
+        for segment in range(self.max_generation_segments):
+            chunk_prompt = base_prompt if segment == 0 else self._build_continuation_prompt(base_prompt, combined_output)
+            chunk_text = self.vlm_infer.infer(
+                image_data,
+                chunk_prompt,
+                max_new_tokens=max_new_tokens,
+            )
+            chunk_text = (chunk_text or "").strip()
+            if not chunk_text:
+                break
+
+            combined_output = f"{combined_output}\n{chunk_text}" if combined_output else chunk_text
+
+            if self._looks_like_complete_json(combined_output):
+                break
+
+        return combined_output
+
+    def _build_continuation_prompt(self, base_prompt: str, partial_output: str) -> str:
+        snippet = (partial_output or "")[-self.continuation_snippet :]
+        last_row_number = self._extract_last_row_number(partial_output or "")
+        continuation_hint = (
+            "\n\nThe previous response was truncated due to generation limits. "
+            "Continue the SAME JSON output exactly where it stopped. "
+            "Do NOT restart or repeat rows that already exist. "
+        )
+        if last_row_number is not None:
+            continuation_hint += (
+                f"The last completed `row_number` was {last_row_number}. "
+                f"Resume from row_number {last_row_number + 1} onward. "
+            )
+        continuation_hint += (
+            "Use the partial JSON below to understand exactly where to continue and return ONLY the remaining JSON.\n"
+            f"```json\n{snippet}\n```"
+        )
+        retry = PromptBuilder.get_retry_prompt('parse_error')
+        if retry:
+            continuation_hint += f"\n{retry}"
+        return continuation_hint
+
+    @staticmethod
+    def _looks_like_complete_json(text: str) -> bool:
+        try:
+            DirtyJsonParser.parse(text)
+            return True
+        except ValueError:
+            return False
+
+    @staticmethod
+    def _extract_last_row_number(text: str) -> Optional[int]:
+        import re
+        matches = re.findall(r'"row_number"\s*:\s*(\d+)', text)
+        if not matches:
+            return None
+        try:
+            return int(matches[-1])
+        except ValueError:
+            return None

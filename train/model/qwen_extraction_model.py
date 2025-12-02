@@ -5,6 +5,8 @@ from typing import Dict, Optional, Tuple
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
+from train.mock_components import MockVisionLanguageModel
+
 
 class QwenExtractionModel:
     """
@@ -21,19 +23,31 @@ class QwenExtractionModel:
         self.device = torch.device(self.model_cfg.get("device", "mps"))
         self.gradient_checkpointing = bool(self.model_cfg.get("gradient_checkpointing", True))
 
-        self.model = AutoModelForCausalLM.from_pretrained(
-            self.model_name,
-            torch_dtype=self.dtype,
-            device_map="auto" if self.device.type != "cpu" else None,
-        )
-        if self.gradient_checkpointing:
-            self.model.gradient_checkpointing_enable()
+        if self.model_name == "mock" or self.model_cfg.get("mock", False):
+            mock_vocab_size = int(self.model_cfg.get("mock_vocab_size", 512))
+            mock_hidden = int(self.model_cfg.get("mock_hidden_size", 64))
+            mock_image = int(self.model_cfg.get("mock_image_size", 32))
+            self.model = MockVisionLanguageModel(
+                vocab_size=mock_vocab_size,
+                hidden_size=mock_hidden,
+                image_size=mock_image,
+            )
+            self.tokenizer = None
+        else:
+            self.model = AutoModelForCausalLM.from_pretrained(
+                self.model_name,
+                torch_dtype=self.dtype,
+                device_map="auto" if self.device.type != "cpu" else None,
+            )
+            if self.gradient_checkpointing:
+                self.model.gradient_checkpointing_enable()
 
-        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=False)
-        if self.tokenizer.pad_token is None:
-            self.tokenizer.pad_token = self.tokenizer.eos_token
+            self.tokenizer = AutoTokenizer.from_pretrained(self.model_name, use_fast=False)
+            if self.tokenizer.pad_token is None:
+                self.tokenizer.pad_token = self.tokenizer.eos_token
 
-        self.model.resize_token_embeddings(len(self.tokenizer))
+            self.model.resize_token_embeddings(len(self.tokenizer))
+
         self.model.to(self.device)
 
     def parameters(self):
@@ -72,4 +86,3 @@ class QwenExtractionModel:
             **kwargs,
         )
         return generation
-

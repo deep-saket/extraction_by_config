@@ -5,6 +5,9 @@ parser:
     vlm_candidate: QwenV25Infer
     embedding_candidate: ColPaliInfer
     cb_candidate: YOLOCheckBox
+    vlm_max_new_tokens: 1024
+    vlm_max_segments: 2
+    vlm_continuation_snippet: 800
     models:
       - QwenV25Infer
       - ColPaliInfer
