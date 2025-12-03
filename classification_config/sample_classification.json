@@ -1,0 +1,46 @@
+{
+  "candidates": [
+    {
+      "file": "Bill of Lading _ PDF _ Cargo _ Transport.json",
+      "text_hints": [
+        "Bill of Lading",
+        "Container No",
+        "Vessel",
+        "Voyage"
+      ],
+      "structure": {
+        "page_count_range": [1, 6],
+        "has_tables": true,
+        "header_hints": ["Bill of Lading"],
+        "landing_page": {
+          "page_index": 1,
+          "text_hints": ["Bill of Lading", "B/L No"],
+          "consider_only": false
+        }
+      }
+    },
+    {
+      "file": "dummy_statement.json",
+      "text_hints": [
+        "Statement",
+        "Invoice",
+        "Amount Due",
+        "Balance",
+        "Total Due"
+      ],
+      "structure": {
+        "page_count_range": [1, 10],
+        "has_tables": true,
+        "must_contain_sections": ["Invoice", "Amount Due"],
+        "landing_page": {
+          "page_index": 1,
+          "consider_only": false
+        }
+      }
+    }
+  ],
+  "thresholds": {
+    "min_score": 0.2,
+    "top2_margin": 0.05
+  }
+}

@@ -1,0 +1,2 @@
+pdf_path: "/Users/saketm10/Projects/extraction_by_config/dataset/Bill of Lading _ PDF _ Cargo _ Transport.pdf"
+classification_config_path: "./classification_config/sample_classification.json"
