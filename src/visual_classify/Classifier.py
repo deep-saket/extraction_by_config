@@ -128,7 +128,8 @@ class Classifier(BaseComponent):
         landing_only = False
         landing_text_hints: List[str] = []
         if structure and structure.landing_page:
-            landing_idx = max(1, structure.landing_page.page_index)
+            lp_index = structure.landing_page.page_index or 1
+            landing_idx = max(1, lp_index)
             landing_only = structure.landing_page.consider_only
             landing_text_hints = structure.landing_page.text_hints or []
 

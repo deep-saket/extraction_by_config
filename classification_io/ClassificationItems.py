@@ -3,9 +3,9 @@ from pydantic import BaseModel, Field
 
 
 class LandingPageHints(BaseModel):
-    page_index: int = Field(
-        default=1,
-        description="1-based index for semantic landing/start page when the first page is metadata."
+    page_index: Optional[int] = Field(
+        default=None,
+        description="Optional 1-based landing/start page when the first page is metadata."
     )
     text_hints: List[str] = Field(
         default_factory=list,
