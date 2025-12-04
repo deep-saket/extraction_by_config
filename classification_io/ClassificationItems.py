@@ -3,6 +3,11 @@ from pydantic import BaseModel, Field
 
 
 class LandingPageHints(BaseModel):
+    """
+    Optional landing-page guidance:
+      - Use when the semantic start page is not page 1 (e.g., first page is metadata/cover).
+      - If omitted, defaults to page 1; if provided without page_index, defaults to page 1.
+    """
     page_index: Optional[int] = Field(
         default=None,
         description="Optional 1-based landing/start page when the first page is metadata."
@@ -26,6 +31,12 @@ class LandingPageHints(BaseModel):
 
 
 class StructureHints(BaseModel):
+    """
+    Soft structural cues to bonus/penalize candidates:
+      - All hints are optional; they act as soft signals, not hard filters.
+      - Page count range applies to the whole document.
+      - Section/header/footer/landing_page hints are queried via ColPali (no OCR required).
+    """
     page_count_range: Optional[List[int]] = Field(
         default=None,
         description="Optional [min, max] page count."
@@ -53,6 +64,11 @@ class StructureHints(BaseModel):
 
 
 class ClassificationCandidate(BaseModel):
+    """
+    One candidate route entry. Minimal requirement is the `file` pointing to a de_config.
+    Text signatures are auto-derived from that de_config (field_name, description, search_keys).
+    Only add `text_hints` when you want to boost additional phrases.
+    """
     file: str = Field(
         ...,
         description="de_config filename to route to."
@@ -68,6 +84,11 @@ class ClassificationCandidate(BaseModel):
 
 
 class Thresholds(BaseModel):
+    """
+    Selection thresholds:
+      - min_score: lowest acceptable score for top-1; otherwise return unknown.
+      - top2_margin: if top1 - top2 < margin, optionally trigger tie-break logic.
+    """
     min_score: float = Field(
         default=0.2,
         description="Minimum score required to accept a match."
@@ -79,6 +100,11 @@ class Thresholds(BaseModel):
 
 
 class ClassificationConfig(BaseModel):
+    """
+    Top-level JSON schema for classification routing.
+      - candidates: list of candidate de_configs with optional hints.
+      - thresholds: global scoring thresholds.
+    """
     candidates: List[ClassificationCandidate] = Field(
         ...,
         description="List of candidate de_configs to select from."
