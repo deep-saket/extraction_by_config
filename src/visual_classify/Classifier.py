@@ -175,7 +175,21 @@ class Classifier(BaseComponent):
         if not queries or not embeddings:
             return 0.0
         page_embeddings = torch.stack([emb for _, emb in embeddings], dim=0)
-        page_embeddings = page_embeddings.squeeze(1) if page_embeddings.dim() == 3 else page_embeddings
+
+        # Normalize shapes to match ColPali score_multi_vector expectations:
+        #   queries: (B, N, D), passages: (C, S, D)
+        if page_embeddings.dim() == 2:
+            # (num_pages, dim) -> (num_pages, 1, dim)
+            page_embeddings = page_embeddings.unsqueeze(1)
+        elif page_embeddings.dim() == 3:
+            # already (num_pages, seq_len, dim)
+            pass
+        elif page_embeddings.dim() == 4:
+            # squeeze potential batch dimension: (num_pages, 1, seq_len, dim) -> (num_pages, seq_len, dim)
+            page_embeddings = page_embeddings.squeeze(1)
+        else:
+            raise ValueError(f"Unexpected page_embeddings shape: {page_embeddings.shape}")
+
         page_embeddings = page_embeddings.to(self.device)
 
         scores = []
@@ -183,6 +197,9 @@ class Classifier(BaseComponent):
             query_emb = self.colpali_infer.get_text_embedding(query)
             if query_emb.dim() == 2 and query_emb.shape[0] == 1:
                 query_emb = query_emb.squeeze(0).unsqueeze(0)
+            if query_emb.dim() == 2:
+                # (1, dim) -> (1, 1, dim)
+                query_emb = query_emb.unsqueeze(0)
             query_emb = query_emb.to(self.device)
             sim = self.colpali_infer.processor.score_multi_vector(query_emb, page_embeddings)
             sim = sim.squeeze(0)
